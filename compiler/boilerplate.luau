@@ -2,7 +2,6 @@
 -- API
 local mem = 2048 -- 2KB of RAM
 local memory = buffer.create(mem) -- our memory!
-local data = {} -- pointers in memory to data, ex: strings
 local registers = table.create(64,0)
 
 -- Variables

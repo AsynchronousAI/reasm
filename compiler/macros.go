@@ -18,7 +18,7 @@ func label(w *OutputWriter, command AssemblyCommand) {
 }
 
 func save_pointer_at(w *OutputWriter, what string, where int32) {
-	WriteIndentedString(w, "data[\"%s\"] = %d\n", what, int(where))
+	w.MemoryMap[what] = int(where)
 }
 func save_pointer(w *OutputWriter) {
 	save_pointer_at(w, w.CurrentLabel, w.MemoryDevelopmentPointer)
@@ -29,7 +29,12 @@ func asciz(w *OutputWriter, components []string) {
 	w.PendingData.Data = data
 	w.PendingData.Type = PendingDataTypeString
 
-	WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\")\n", w.MemoryDevelopmentPointer, data)
+	if w.Options.Comments {
+		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\") -- %s\n", w.MemoryDevelopmentPointer, data, w.CurrentLabel)
+	} else {
+		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\")\n", w.MemoryDevelopmentPointer, data)
+	}
+
 	save_pointer(w)
 	w.MemoryDevelopmentPointer += int32(len(data) + 1)
 }

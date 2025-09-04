@@ -332,7 +332,6 @@ func AfterCompilation(writer *OutputWriter) []byte {
 		reset_registers = reset_registers,
 	},
 	registers = registers,
-	data = data,
 
 	exports = {
 `)

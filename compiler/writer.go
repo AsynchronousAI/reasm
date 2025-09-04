@@ -25,8 +25,8 @@ type OutputWriter struct {
 	Depth                    int               /* used for indentation */
 	MaxPC                    int               /* used for counting PC which is hardcoded in */
 	Commands                 []AssemblyCommand /* used to check lines in the future */
+	MemoryMap                map[string]int    /* map static data keys to addresses */
 	Options                  Options           /* user specified options */
-	//RegistryMap              map[string]int    /* register name to integer */
 }
 
 func WriteString(writer *OutputWriter, format string, args ...any) {

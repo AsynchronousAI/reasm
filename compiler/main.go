@@ -25,6 +25,7 @@ func Compile(executable *os.File, options Options) []byte {
 		MemoryDevelopmentPointer: 0,
 		MaxPC:                    1,
 		Options:                  options,
+		MemoryMap:                make(map[string]int),
 	}
 
 	elf, err := elf.NewFile(executable)

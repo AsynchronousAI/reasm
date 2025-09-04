@@ -38,10 +38,16 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 		return argument.Source
 	}
 
-	var compiled string = fmt.Sprintf("data[\"%s\"]", argument.Source) /* assume it is raw data originally */
-	isReg, regName := isRegister(argument.Source)
-	regNumber := baseRegs[regName]
-	if isReg { /* it is a register! */
+	var compiled string = argument.Source
+
+	if memoryAddress, ok := w.MemoryMap[argument.Source]; ok {
+		if w.Options.Comments {
+			compiled = fmt.Sprintf("%d --[[ %s ]]", memoryAddress, argument.Source)
+		} else {
+			compiled = fmt.Sprintf("%d", memoryAddress)
+		}
+	} else if isReg, regName := isRegister(argument.Source); isReg { /* it is a register! */
+		regNumber := baseRegs[regName]
 		if w.Options.Comments {
 			compiled = fmt.Sprintf("registers[%d --[[ %s ]] ]", regNumber, regName)
 		} else {
