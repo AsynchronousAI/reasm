@@ -19,7 +19,7 @@ type PendingData struct {
 }
 type OutputWriter struct {
 	Buffer                   []byte            /* the output */
-	CurrentLabel             string            /* keep track of current label  */
+	CurrentLabel             *AssemblyCommand  /* keep track of current label  */
 	MemoryDevelopmentPointer int32             /* used when generating code that propagates memory with strings */
 	PendingData              PendingData       /* used for remember data across instructions */
 	Depth                    int               /* used for indentation */

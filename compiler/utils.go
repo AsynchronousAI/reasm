@@ -26,7 +26,7 @@ func AddEnd(w *OutputWriter) {
 
 	w.Depth--
 	if w.Options.Comments {
-		WriteIndentedString(w, "end -- %s (%s)\n", w.CurrentLabel, w.CurrentLabel)
+		WriteIndentedString(w, "end -- %s (%s)\n", w.CurrentLabel.Name, w.CurrentLabel.Name)
 	} else {
 		WriteIndentedString(w, "end\n")
 	}
@@ -95,10 +95,10 @@ func JumpTo(w *OutputWriter, label string, link bool) {
 }
 func CutAndLink(w *OutputWriter) {
 	AddEnd(w)
-	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel)
+	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
 	w.Depth++
 	w.MaxPC++
-	w.CurrentLabel = IncrementFunctionName(w.CurrentLabel)
+	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)
 }
 func FindInArray(array []string, target string) int {
 	for i, item := range array {
@@ -137,7 +137,7 @@ func IncrementFunctionName(name string) string {
 func GetAllLabels(writer *OutputWriter) []string {
 	labels := make([]string, 0)
 	for _, command := range writer.Commands {
-		if command.Type == Label {
+		if command.Type == Label && command.Ignore == false {
 			labels = append(labels, command.Name)
 		}
 	}
@@ -147,10 +147,10 @@ func GetAllLabels(writer *OutputWriter) []string {
 func FindLabelAddress(writer *OutputWriter, target string) int {
 	countedLabels := 0
 	for _, label := range writer.Commands {
-		if label.Type == Label || isCutoffInstruction(label) {
+		if (label.Type == Label && label.Ignore == false) || isCutoffInstruction(label) {
 			countedLabels++ // our labels are Lua indexed starting at 1
 		}
-		if label.Type == Label && label.Name == target {
+		if label.Type == Label && label.Ignore == false && label.Name == target {
 			return countedLabels
 		}
 	}

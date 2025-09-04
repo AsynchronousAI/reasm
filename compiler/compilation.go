@@ -258,23 +258,28 @@ func BeforeCompilation(writer *OutputWriter) {
 	WriteIndentedString(writer, "function init()\n")
 	writer.Depth++
 	WriteIndentedString(writer, "reset_registers()\n")
-	for _, command := range writer.Commands {
-		if command.Type == Label {
-			writer.CurrentLabel = command.Name /* macros depend on label */
-		}
-		if command.Type != Directive {
-			continue
-		}
 
-		attributeComponents := ReadDirective(command.Name)
-		attributeName := attributeComponents[0]
-		if _, ok := directives[attributeName]; ok {
-			directives[attributeName](writer, attributeComponents)
-		} else if writer.Options.Comments {
-			WriteIndentedString(writer, "-- ASM DIRECTIVE: %s\n", command.Name)
+	/* pre-read the code, and write directive to top */
+	for i := range writer.Commands {
+		if writer.Commands[i].Type == Label {
+			writer.CurrentLabel = &writer.Commands[i]
+			writer.Commands[i].Ignore = true
+		}
+		if writer.Commands[i].Type == Instruction {
+			writer.CurrentLabel.Ignore = false
+		}
+		if writer.Commands[i].Type == Directive {
+			attributeComponents := ReadDirective(writer.Commands[i].Name)
+			attributeName := attributeComponents[0]
+			if _, ok := directives[attributeName]; ok {
+				directives[attributeName](writer, attributeComponents)
+			} else if writer.Options.Comments {
+				WriteIndentedString(writer, "-- ASM DIRECTIVE: %s\n", writer.Commands[i].Name)
+			}
 		}
 	}
-	writer.CurrentLabel = ""
+
+	/* finish loading directives */
 	WriteIndentedString(writer, "PC = %d\n", FindLabelAddress(writer, writer.Options.MainSymbol))
 	WriteIndentedString(writer, "registers[3] = (buffer.len(memory) + %d) / 2 -- start at the center after static data\n", writer.MemoryDevelopmentPointer)
 	WriteIndentedString(writer, "if registers[3] >= buffer.len(memory) then error(\"Not enough memory\") end\n")

@@ -21,7 +21,6 @@ func Compile(executable *os.File, options Options) []byte {
 	/* prepare */
 	var writer = &OutputWriter{
 		Buffer:                   []byte(""),
-		CurrentLabel:             "",
 		MemoryDevelopmentPointer: 0,
 		MaxPC:                    1,
 		Options:                  options,

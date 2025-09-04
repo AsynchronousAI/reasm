@@ -33,10 +33,10 @@ func jalr(w *OutputWriter, command AssemblyCommand) {
 	w.Depth--
 	WriteIndentedString(w, "end\n")
 	AddEnd(w)
-	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel)
+	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
 	w.Depth++
 	w.MaxPC++
-	w.CurrentLabel = IncrementFunctionName(w.CurrentLabel)
+	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)
 }
 func jr(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "do\n") // wrap with a do so luau does not complain if any code is after the continue

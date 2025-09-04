@@ -10,7 +10,10 @@ func label(w *OutputWriter, command AssemblyCommand) {
 	AddEnd(w)
 
 	/* define it */
-	w.CurrentLabel = command.Name
+	w.CurrentLabel = &command
+	if w.CurrentLabel.Ignore {
+		return
+	}
 
 	WriteIndentedString(w, "FUNCS[%d] = function() -- %s\n", w.MaxPC, command.Name)
 	w.Depth++
@@ -21,7 +24,7 @@ func save_pointer_at(w *OutputWriter, what string, where int32) {
 	w.MemoryMap[what] = int(where)
 }
 func save_pointer(w *OutputWriter) {
-	save_pointer_at(w, w.CurrentLabel, w.MemoryDevelopmentPointer)
+	save_pointer_at(w, w.CurrentLabel.Name, w.MemoryDevelopmentPointer)
 }
 
 func asciz(w *OutputWriter, components []string) {
@@ -30,7 +33,7 @@ func asciz(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeString
 
 	if w.Options.Comments {
-		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\") -- %s\n", w.MemoryDevelopmentPointer, data, w.CurrentLabel)
+		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\") -- %s\n", w.MemoryDevelopmentPointer, data, w.CurrentLabel.Name)
 	} else {
 		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\")\n", w.MemoryDevelopmentPointer, data)
 	}

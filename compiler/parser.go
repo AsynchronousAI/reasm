@@ -27,6 +27,7 @@ type AssemblyCommand struct {
 	Type      CommandType
 	Name      string
 	Arguments []Argument
+	Ignore    bool /* usually only used for labels, to exclude ones without instructions */
 }
 
 func Parse(writer *OutputWriter, command string) AssemblyCommand {
