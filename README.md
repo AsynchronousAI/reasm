@@ -61,11 +61,6 @@ Super helpful resources in development below:
 
 
 ## TODO:
-- Improved floating points
-- Support for `%hi(val)(5)` assembly syntax.
-- Vector operations
-- Bit manipulation operators
+- Vector extension
+- Bit manipulation extension
 - Work on support for ELF files. (or decide to remove it)
-  * `No bindings for function '<register??>'`
-  * ECALL & AUIPC
-  * Read labels
