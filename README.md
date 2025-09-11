@@ -8,7 +8,7 @@
 > Some programs, will not work! Create an issue if you find an assembly file which is compiling invalid.
 
 ## Example:
-```c
+```cpp
 void printf(const char *, ...); /* manually define printf if we are not using stdlib.h */
 
 int fib(int n) {
