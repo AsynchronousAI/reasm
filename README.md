@@ -1,6 +1,6 @@
 # ReASM
 [Wiki](https://github.com/AsynchronousAI/reasm/wiki)
-> A experimental **RISC-V IMFD** compatible assembler/disassembler to **Luau**. Soon to be **IMFDVB** compatible!
+> A **RISC-V IMFD** compatible assembler/disassembler to **Luau**. Soon to be **IMFDVB** compatible!
 >
 > **125+** supported instructions & directives!
 
