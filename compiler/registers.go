@@ -1,5 +1,11 @@
 package compiler
 
+import "fmt"
+
+func regVarName(index int) string {
+	return fmt.Sprintf("r%d", index)
+}
+
 var baseRegs = map[string]int{
 	"x0":  1,
 	"x1":  2,

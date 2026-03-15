@@ -17,16 +17,10 @@ int fib(int n) {
     return fib(n-1) + fib(n-2);
 }
 
-void printFib(int n, int i) {
-    if (i < n) {
-        printf("%d ", fib(i));
-        printFib(n, i+1);
-    }
-}
-
 int main() {
-    int terms = 10;
-    printFib(terms, 0);
+    for (int i = 0; i < 10; i++){
+        printf("%d ", fib(i));
+    }
     return 0;
 }
 ```

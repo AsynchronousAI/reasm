@@ -3,14 +3,14 @@ package compiler
 import log "github.com/sirupsen/logrus"
 
 func ret(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if registers[2] ~= 0 then\n")
+	WriteIndentedString(w, "if r2 ~= 0 then\n")
 	w.Depth++
 	//WriteIndentedString(w, "print('ret', RETURN)\n")
-	WriteIndentedString(w, "PC = registers[2]\n")
+	WriteIndentedString(w, "PC = r2\n")
 	if w.Options.Trace {
 		WriteIndentedString(w, "print('RET: ', PC)\n")
 	}
-	WriteIndentedString(w, "registers[2] = 0\n")
+	WriteIndentedString(w, "r2 = 0\n")
 	WriteIndentedString(w, "return true\n")
 	w.Depth--
 	WriteIndentedString(w, "else\n")
@@ -55,4 +55,9 @@ func ecall(w *OutputWriter, command AssemblyCommand) {
 }
 func fence(w *OutputWriter, command AssemblyCommand) {
 	log.Warn("FENCE cannot be used.")
+}
+func nop(w *OutputWriter, command AssemblyCommand) {
+	if w.Options.Comments {
+		WriteIndentedString(w, "-- nop\n")
+	}
 }

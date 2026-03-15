@@ -49,9 +49,9 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 	} else if isReg, regName := isRegister(argument.Source); isReg { /* it is a register! */
 		regNumber := baseRegs[regName]
 		if w.Options.Comments {
-			compiled = fmt.Sprintf("registers[%d --[[ %s ]] ]", regNumber, regName)
+			compiled = fmt.Sprintf("%s --[[ %s ]]", regVarName(regNumber), regName)
 		} else {
-			compiled = fmt.Sprintf("registers[%d]", regNumber)
+			compiled = regVarName(regNumber)
 		}
 
 		/** Offset */
@@ -73,7 +73,7 @@ func JumpTo(w *OutputWriter, label string, link bool) {
 		WriteIndentedString(w, "do\n") // wrap with a do so luau does not complain if any code is after the continue
 		w.Depth++
 		if link {
-			WriteIndentedString(w, "registers[2] = %d\n", w.MaxPC)
+			WriteIndentedString(w, "r2 = %d\n", w.MaxPC)
 		}
 
 		if w.Options.Comments {

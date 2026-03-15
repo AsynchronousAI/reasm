@@ -189,6 +189,7 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"ret":   ret,
 	"call":  call,
 	"mv":    move,
+	"nop":   nop,
 }
 var directives = map[string]func(*OutputWriter, []string){
 	".asciz":  asciz,
@@ -281,8 +282,8 @@ func BeforeCompilation(writer *OutputWriter) {
 
 	/* finish loading directives */
 	WriteIndentedString(writer, "PC = %d\n", FindLabelAddress(writer, writer.Options.MainSymbol))
-	WriteIndentedString(writer, "registers[3] = (buffer.len(memory) + %d) / 2 -- start at the center after static data\n", writer.MemoryDevelopmentPointer)
-	WriteIndentedString(writer, "if registers[3] >= buffer.len(memory) then error(\"Not enough memory\") end\n")
+	WriteIndentedString(writer, "r3 = (buffer.len(memory) + %d) / 2 -- start at the center after static data\n", writer.MemoryDevelopmentPointer)
+	WriteIndentedString(writer, "if r3 >= buffer.len(memory) then error(\"Not enough memory\") end\n")
 	writer.Depth--
 	WriteIndentedString(writer, "end\n")
 
@@ -336,7 +337,6 @@ func AfterCompilation(writer *OutputWriter) []byte {
 		fclass = fclass,
 		reset_registers = reset_registers,
 	},
-	registers = registers,
 
 	exports = {
 `)

@@ -2,7 +2,10 @@
 -- API
 local mem = 2048 -- 2KB of RAM
 local memory = buffer.create(mem) -- our memory!
-local registers = table.create(64,0)
+local r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 -- Variables
 local PC = 1 -- current position
@@ -90,7 +93,10 @@ function fclass(x)
     return result
 end
 function reset_registers()
-    registers = table.create(64,0)
+    r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 end
 
 --- Strings
@@ -151,39 +157,31 @@ end
 
 --- Args
 local function get_args()
-   return
-       registers[11],
-       registers[12],
-       registers[13],
-       registers[14],
-       registers[15],
-       registers[16],
-       registers[17],
-       registers[18]
+   return r11, r12, r13, r14, r15, r16, r17, r18
 end
-local function push_args(...)
-    local vals = {...}
-    for i = 1, #vals do
-        registers[i + 10] = vals[i]
-    end
+local function push_args(a1, a2, a3, a4, a5, a6, a7, a8)
+    r11 = a1 or 0
+    r12 = a2 or 0
+    r13 = a3 or 0
+    r14 = a4 or 0
+    r15 = a5 or 0
+    r16 = a6 or 0
+    r17 = a7 or 0
+    r18 = a8 or 0
 end
 
 local function get_f_args()
-   return
-       registers[43],
-       registers[44],
-       registers[45],
-       registers[46],
-       registers[47],
-       registers[48],
-       registers[49],
-       registers[50]
+   return r43, r44, r45, r46, r47, r48, r49, r50
 end
-local function push_f_args(...)
-    local vals = {...}
-    for i = 1, #vals do
-        registers[i + 42] = vals[i]
-    end
+local function push_f_args(a1, a2, a3, a4, a5, a6, a7, a8)
+    r43 = a1 or 0
+    r44 = a2 or 0
+    r45 = a3 or 0
+    r46 = a4 or 0
+    r47 = a5 or 0
+    r48 = a6 or 0
+    r49 = a7 or 0
+    r50 = a8 or 0
 end
 
 
