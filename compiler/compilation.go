@@ -2,9 +2,6 @@ package compiler
 
 import (
 	_ "embed"
-	"fmt"
-	"sort"
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -202,36 +199,6 @@ var directives = map[string]func(*OutputWriter, []string){
 	".set":    set,
 }
 
-func generateRegistryMap(w *OutputWriter, m map[string]bool) string {
-	var sb strings.Builder
-
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		ki, kj := keys[i], keys[j]
-
-		// Compare first characters
-		if ki[0] != kj[0] {
-			return ki[0] > kj[0]
-		}
-
-		// Extract numeric suffix
-		numI, _ := strconv.Atoi(ki[1:])
-		numJ, _ := strconv.Atoi(kj[1:])
-
-		return numI < numJ
-	})
-
-	for _, k := range keys {
-		sb.WriteString(fmt.Sprintf("\t[\"%s\"] = 0,\n", k))
-		//w.RegistryMap[k] = i
-	}
-
-	return sb.String()
-}
-
 /* main */
 func CompileInstruction(writer *OutputWriter, command AssemblyCommand) {
 	switch command.Type {
@@ -265,6 +232,7 @@ func BeforeCompilation(writer *OutputWriter) {
 		if writer.Commands[i].Type == Label {
 			writer.CurrentLabel = &writer.Commands[i]
 			writer.Commands[i].Ignore = true
+			writer.PendingData = PendingData{} // reset so first directive under this label always saves pointer
 		}
 		if writer.Commands[i].Type == Instruction {
 			writer.CurrentLabel.Ignore = false
@@ -337,6 +305,7 @@ func AfterCompilation(writer *OutputWriter) []byte {
 		fclass = fclass,
 		reset_registers = reset_registers,
 	},
+
 
 	exports = {
 `)

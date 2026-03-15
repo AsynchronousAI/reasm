@@ -41,8 +41,8 @@ local function float_to_double(f)
     local d = string.unpack("d", padded)
     return d
 end
-local function two_words_to_double(lowWord, highWord)
-    local packed = string.pack("I4I4", lowWord, highWord)
+local function two_words_to_double(highWord, lowWord)
+    local packed = string.pack("<I4I4", lowWord, highWord)
     local d = string.unpack("d", packed)
     return d
 end
@@ -206,7 +206,15 @@ local functions = {
         local dest = malloc(size)
 
         push_args(dest)
-    end
+    end,
+    ["putchar"] = function()
+        local c = get_args()
+        if string.char(c) == "\n" then
+            print()
+        else
+            print(string.char(c))
+        end
+    end,
 }
 
 -- Extensions

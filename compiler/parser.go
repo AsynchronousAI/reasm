@@ -7,13 +7,14 @@ import (
 )
 
 var offsetReg = regexp.MustCompile(`^(-?\d+)?\((\w+)\)$`)
-var modifierReg = regexp.MustCompile(`^%(hi|lo)\((.+)\)$`)
+var modifierReg = regexp.MustCompile(`^%(hi|lo)\(([^)]+)\)(?:\((\w+)\))?$`)
 
 type Argument struct {
-	Offset   int8
-	Register bool
-	Source   string
-	Modifier string /* "lo", "hi", or "" */
+	Offset       int8
+	Register     bool
+	Source       string
+	Modifier     string /* "lo", "hi", or "" */
+	BaseRegister string /* for %lo(sym)(reg) patterns */
 }
 type CommandType uint8
 
@@ -81,27 +82,35 @@ func parseArguments(parts []string) []Argument {
 
 		arg := Argument{}
 
-		// Check for %hi(...) or %lo(...) pattern
+		// Check for %hi(sym), %lo(sym), or %lo(sym)(basereg)
 		if matches := modifierReg.FindStringSubmatch(p); matches != nil {
 			arg.Modifier = matches[1] // "hi" or "lo"
-			p = matches[2]            // content inside parentheses
+			arg.Source = matches[2]   // symbol name
+			if matches[3] != "" {
+				// %lo(sym)(reg) — capture base register in canonical x-form
+				if _, reg := isRegister(matches[3]); reg != "" {
+					arg.BaseRegister = reg
+				} else {
+					arg.BaseRegister = matches[3]
+				}
+			}
+			args = append(args, arg)
+			continue
 		}
 
-		arg.Source = p // store the raw source
+		arg.Source = p
 
-		// Check for offset(register) pattern inside source
+		// Check for offset(register) or standalone register
 		isReg, reg := isRegister(p)
 		if matches := offsetReg.FindStringSubmatch(p); matches != nil {
 			arg.Register = true
-			arg.Source = matches[2] // register name only
+			arg.Source = matches[2]
 			if matches[1] != "" {
 				if val, err := strconv.Atoi(matches[1]); err == nil {
 					arg.Offset = int8(val)
 				}
-			} else {
-				arg.Offset = 0
 			}
-		} else if isReg { // standalone register
+		} else if isReg {
 			arg.Register = true
 			arg.Offset = 0
 			arg.Source = reg

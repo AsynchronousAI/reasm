@@ -41,15 +41,32 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 	var compiled string = argument.Source
 
 	if memoryAddress, ok := w.MemoryMap[argument.Source]; ok {
+		if argument.Modifier != "" {
+			/* resolve to plain number for use inside modifier call, add comment outside */
+			inner := fmt.Sprintf("%d", memoryAddress)
+			compiled = fmt.Sprintf("%s(%s)", argument.Modifier, inner)
+			if argument.BaseRegister != "" {
+				baseNum := baseRegs[argument.BaseRegister]
+				if w.Options.Comments {
+					compiled = fmt.Sprintf("%s + --[[ %s ]] %s", compiled, argument.BaseRegister, regVarName(baseNum))
+				} else {
+					compiled = fmt.Sprintf("%s + %s", compiled, regVarName(baseNum))
+				}
+			}
+			if w.Options.Comments {
+				compiled = fmt.Sprintf("--[[ %s ]] %s", argument.Source, compiled)
+			}
+			return compiled
+		}
 		if w.Options.Comments {
-			compiled = fmt.Sprintf("%d --[[ %s ]]", memoryAddress, argument.Source)
+			compiled = fmt.Sprintf("--[[ %s ]] %d", argument.Source, memoryAddress)
 		} else {
 			compiled = fmt.Sprintf("%d", memoryAddress)
 		}
 	} else if isReg, regName := isRegister(argument.Source); isReg { /* it is a register! */
 		regNumber := baseRegs[regName]
 		if w.Options.Comments {
-			compiled = fmt.Sprintf("%s --[[ %s ]]", regVarName(regNumber), regName)
+			compiled = fmt.Sprintf("--[[ %s ]] %s", regName, regVarName(regNumber))
 		} else {
 			compiled = regVarName(regNumber)
 		}
@@ -60,9 +77,21 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 		}
 	}
 
-	/** Modifier */
+	/** Modifier (source was not in MemoryMap — leave as symbol name) */
 	if argument.Modifier != "" {
 		compiled = fmt.Sprintf("%s(%s)", argument.Modifier, compiled)
+	}
+
+	/** Base Register for %lo(sym)(reg) */
+	if argument.BaseRegister != "" {
+		baseNum := baseRegs[argument.BaseRegister]
+		var baseCompiled string
+		if w.Options.Comments {
+			baseCompiled = fmt.Sprintf("--[[ %s ]] %s", argument.BaseRegister, regVarName(baseNum))
+		} else {
+			baseCompiled = regVarName(baseNum)
+		}
+		compiled = fmt.Sprintf("%s + %s", compiled, baseCompiled)
 	}
 	return compiled
 }
