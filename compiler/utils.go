@@ -8,16 +8,18 @@ import (
 )
 
 func ReadDirective(directive string) []string {
-	// Regex: match either "quoted strings" or sequences of non-comma, non-whitespace characters
-	re := regexp.MustCompile(`"([^"]*)"|[^,\s]+`)
-	matches := re.FindAllString(directive, -1)
+	re := regexp.MustCompile(`"([^"]*)"|([^,\s]+)`)
+	matches := re.FindAllStringSubmatch(directive, -1)
 
-	// Remove quotes and trim spaces
-	for i, match := range matches {
-		matches[i] = strings.TrimSpace(strings.Trim(match, `"`))
+	result := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if match[1] != "" || (len(match[0]) > 0 && match[0][0] == '"') {
+			result = append(result, match[1])
+		} else {
+			result = append(result, strings.TrimSpace(match[2]))
+		}
 	}
-
-	return matches
+	return result
 }
 func AddEnd(w *OutputWriter) {
 	if w.Depth == 0 {

@@ -4,3 +4,4 @@ reasm
 .DS_Store
 main.luau
 bench
+sourcemap.json

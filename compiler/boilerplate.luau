@@ -10,6 +10,7 @@ local r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,
 -- Variables
 local PC = 1 -- current position
 local mallocDepth = 0
+local stdout_cache = ""
 
 -- Utility
 --- Base (can be found in generated code)
@@ -114,23 +115,22 @@ local function read_string(startPointer)
     until false
     return str
 end
-local function format_string(fmt, args)
-    -- custom format string because strings are stored as pointers, and floats as ints.
+function format_string(fmt, args)
+    fmt = read_string(fmt)
     local arg_index = 1
 
-    local result = fmt:gsub("%%([%d%.]*[dfseX])", function(spec)
+    return fmt:gsub("%%([%d%.]*[dfseX])", function(spec)
         local val = args[arg_index]
         arg_index += 1
 
         if spec:sub(-1) == "d" then
-            return string.format("%d", val)
+            return tostring(val)
         elseif spec:sub(-1) == "X" then
             return string.format("%X", val)
         elseif spec:sub(-1) == "f" then
             local low = args[arg_index]; arg_index+=1;
             local high = args[arg_index]; arg_index+=1;
             local float = two_words_to_double(high, math.abs(low))
-
             return string.format("%"..spec, float)
         elseif spec:sub(-1) == "s" then
             return read_string(val)
@@ -139,15 +139,13 @@ local function format_string(fmt, args)
             local low = args[arg_index]; arg_index+=1;
             local high = args[arg_index]; arg_index+=1;
             local float = two_words_to_double(high, low)
-
             return string.format("%"..spec, float)
         else
             return spec
         end
     end)
-
-    return result
 end
+
 
 --- Memory
 local function malloc(size)
@@ -169,7 +167,6 @@ local function push_args(a1, a2, a3, a4, a5, a6, a7, a8)
     r17 = a7 or 0
     r18 = a8 or 0
 end
-
 local function get_f_args()
    return r43, r44, r45, r46, r47, r48, r49, r50
 end
@@ -184,18 +181,17 @@ local function push_f_args(a1, a2, a3, a4, a5, a6, a7, a8)
     r50 = a8 or 0
 end
 
+--- IO
+local function flush_stdout()
+    if #stdout_cache > 0 then
+        print(stdout_cache)
+        stdout_cache = ""
+    end
+end
+
 
 -- Functions
 local functions = {
-    ["printf"] = function()
-        local args = {get_args()}
-        local str = args[1]
-        table.remove(args, 1)
-        print(format_string(read_string(str), args))
-    end,
-    ["puts"] = function()
-        print(read_string(get_args()))
-    end,
     ["memcpy"] = function()
         local dest,src,count = get_args()
 
@@ -209,12 +205,33 @@ local functions = {
     end,
     ["putchar"] = function()
         local c = get_args()
-        if string.char(c) == "\n" then
-            print()
+        local char = string.char(c)
+        if char == "\n" then
+            flush_stdout()
         else
-            print(string.char(c))
+            stdout_cache = stdout_cache .. char
         end
     end,
+    ["puts"] = function()
+        local str = read_string(get_args())
+        stdout_cache = stdout_cache .. str
+        flush_stdout()
+    end,
+    ["printf"] = function()
+        local args = {get_args()}
+        local fmt_ptr = args[1]
+        table.remove(args, 1)
+
+        local formatted = format_string(fmt_ptr, args)
+        for i = 1, #formatted do
+            local ch = formatted:sub(i,i)
+            if ch == "\n" then
+                flush_stdout()
+            else
+                stdout_cache = stdout_cache .. ch
+            end
+        end
+    end
 }
 
 -- Extensions
@@ -260,3 +277,4 @@ local floor = math.floor
 local FUNCS = {}
 ---- Auto generated code starts here
 --{code here}
+flush_stdout()
