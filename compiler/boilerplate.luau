@@ -13,6 +13,21 @@ local mallocDepth = 0
 local stdout_cache = ""
 
 -- Utility
+--- 32-bit helpers
+local function mask32(v)
+    return bit32.band(v, 0xFFFFFFFF)
+end
+local function u32(v)
+    return mask32(v)
+end
+local function i32(v)
+    local n = mask32(v)
+    if n >= 0x80000000 then
+        return n - 0x100000000
+    end
+    return n
+end
+
 --- Base (can be found in generated code)
 local function idiv_trunc(a, b)
     if b == 0 then error("division by zero") end
@@ -124,9 +139,9 @@ function format_string(fmt, args)
         arg_index += 1
 
         if spec:sub(-1) == "d" then
-            return tostring(val)
+            return tostring(i32(val))
         elseif spec:sub(-1) == "X" then
-            return string.format("%X", val)
+            return string.format("%X", u32(val))
         elseif spec:sub(-1) == "f" then
             local low = args[arg_index]; arg_index+=1;
             local high = args[arg_index]; arg_index+=1;

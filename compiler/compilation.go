@@ -10,6 +10,20 @@ import (
 //go:embed boilerplate.luau
 var luau_boilerplate string
 
+/* Float arithmetic helpers to avoid integer wrapping */
+func fadd(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
+func fsub(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = %s - %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
+func fmul(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = %s * %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
+func fdiv(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = %s / %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
+
 var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	/* bit shifts */
 	"sll":  sll,
@@ -113,19 +127,19 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"fclass.d": fclass,
 
 	/** Arithmetic */
-	"fadd.s": add,
-	"fsub.s": sub,
-	"fdiv.s": div,
-	"fmul.s": mul,
-	"fadd.d": add,
-	"fsub.d": sub,
-	"fdiv.d": div,
-	"fmul.d": mul,
+	"fadd.s": fadd,
+	"fsub.s": fsub,
+	"fdiv.s": fdiv,
+	"fmul.s": fmul,
+	"fadd.d": fadd,
+	"fsub.d": fsub,
+	"fdiv.d": fdiv,
+	"fmul.d": fmul,
 	"fneg.s": fneg,
 	"fneg.d": fneg,
 
 	/** More advanced */
-	"fabs.s":  fneg,
+	"fabs.s":  fabs,
 	"fabs.d":  fabs,
 	"fsqrt.s": fsqrt,
 	"fmin.s":  fmin,

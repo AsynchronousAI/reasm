@@ -5,3 +5,6 @@ reasm
 main.luau
 bench
 sourcemap.json
+*.c
+main
+platform.info
