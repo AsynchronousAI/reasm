@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"encoding/base64"
 	"strconv"
 	"strings"
 )
@@ -40,6 +41,24 @@ func asciz(w *OutputWriter, components []string) {
 
 	save_pointer(w)
 	w.MemoryDevelopmentPointer += int32(len(data) + 1)
+}
+func base64data(w *OutputWriter, components []string) {
+	if len(components) < 2 {
+		return
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(components[1])
+	if err != nil {
+		return
+	}
+
+	save_pointer(w)
+	for i, b := range decoded {
+		WriteIndentedString(w, "writeu8(memory, %d, %d)\n", int(w.MemoryDevelopmentPointer)+i, int(b))
+	}
+
+	w.MemoryDevelopmentPointer += int32(len(decoded))
+	w.PendingData.Type = PendingDataTypeString
 }
 func quad(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {

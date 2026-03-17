@@ -47,7 +47,11 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 		if argument.Modifier != "" {
 			/* resolve to plain number for use inside modifier call, add comment outside */
 			inner := fmt.Sprintf("%d", memoryAddress)
-			compiled = fmt.Sprintf("%s(%s)", argument.Modifier, inner)
+			if literal, ok := resolveModifierLiteral(argument.Modifier, memoryAddress); ok {
+				compiled = fmt.Sprintf("%d", literal)
+			} else {
+				compiled = fmt.Sprintf("%s(%s)", argument.Modifier, inner)
+			}
 			if argument.BaseRegister != "" {
 				baseNum := baseRegs[argument.BaseRegister]
 				if w.Options.Comments {
@@ -97,6 +101,17 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 		compiled = fmt.Sprintf("%s + %s", compiled, baseCompiled)
 	}
 	return compiled
+}
+
+func resolveModifierLiteral(modifier string, address int) (int, bool) {
+	switch modifier {
+	case "hi":
+		return address &^ 0xFFF, true
+	case "lo":
+		return address & 0xFFF, true
+	default:
+		return 0, false
+	}
 }
 func JumpTo(w *OutputWriter, label string, link bool) {
 	address := FindLabelAddress(w, label)

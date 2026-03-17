@@ -202,10 +202,63 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"call":  call,
 	"mv":    move,
 	"nop":   nop,
+
+	/* Zbb Extension - Basic Bit Manipulation */
+	/** Count operations */
+	"clz":  clz,
+	"ctz":  ctz,
+	"cpop": cpop,
+
+	/** Min/Max */
+	"min":  min,
+	"minu": minu,
+	"max":  max,
+	"maxu": maxu,
+
+	/** Sign/Zero Extension */
+	"sext.b": sext_b,
+	"sext.h": sext_h,
+	"zext.h": zext_h,
+
+	/** Logical with Negate */
+	"andn": andn,
+	"orn":  orn,
+	"xnor": xnor,
+
+	/** Rotation */
+	"rol":  rol,
+	"ror":  ror,
+	"rori": rori,
+
+	/** Byte Operations */
+	"orc.b": orc_b,
+	"rev8":  rev8,
+
+	/** Packing */
+	"pack":  pack,
+	"packh": packh,
+
+	/* Zbs Extension - Single-Bit Instructions */
+	/** Bit Set */
+	"bset":  bset,
+	"bseti": bseti,
+
+	/** Bit Clear */
+	"bclr":  bclr,
+	"bclri": bclri,
+
+	/** Bit Invert */
+	"binv":  binv,
+	"binvi": binvi,
+
+	/** Bit Extract */
+	"bext":  bext,
+	"bexti": bexti,
 }
 var directives = map[string]func(*OutputWriter, []string){
 	".asciz":  asciz,
 	".string": asciz,
+	".base64": base64data,
 	".quad":   quad,
 	".word":   word,
 	".byte":   byte_,
@@ -250,7 +303,9 @@ func BeforeCompilation(writer *OutputWriter) {
 			writer.PendingData = PendingData{} // reset so first directive under this label always saves pointer
 		}
 		if writer.Commands[i].Type == Instruction {
-			writer.CurrentLabel.Ignore = false
+			if writer.CurrentLabel != nil {
+				writer.CurrentLabel.Ignore = false
+			}
 		}
 		if writer.Commands[i].Type == Directive {
 			attributeComponents := ReadDirective(writer.Commands[i].Name)

@@ -1,8 +1,8 @@
 # ReASM
 [Wiki](https://github.com/AsynchronousAI/reasm/wiki)
-> A **RISC-V IMFD** compatible assembler/disassembler to **Luau**. Soon to be **IMFDVB** compatible!
+> A **RISC-V IMFD + Zbb/Zbs** compatible assembler/disassembler to **Luau**. 
 >
-> **125+** supported instructions & directives!
+> **173+** supported instructions & directives!
 
 > [!NOTE]
 > Some programs, will not work! Create an issue if you find an assembly file which is compiling invalid.
@@ -56,5 +56,4 @@ Super helpful resources in development below:
 
 ## TODO:
 - Vector extension
-- Bit manipulation extension
 - Work on support for ELF files. (or decide to remove it)

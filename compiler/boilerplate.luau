@@ -243,7 +243,7 @@ local functions = {
                 stdout_cache = stdout_cache .. ch
             end
         end
-    end
+    end,
 }
 
 -- Extensions
