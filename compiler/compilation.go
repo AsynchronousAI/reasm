@@ -194,6 +194,7 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"fcvt.d.s":  fcvt_d_s,
 	"fcvt.w.d":  fcvt_w_d,
 	"fcvt.d.w":  fcvt_d_w,
+	"fcvt.d.wu": fcvt_d_wu,
 
 	/* Abstraction */
 	"auipc": auipc,
@@ -237,7 +238,7 @@ func CompileInstruction(writer *OutputWriter, command AssemblyCommand) {
 func BeforeCompilation(writer *OutputWriter) {
 
 	/* load directives */
-	WriteIndentedString(writer, "function init()\n")
+	WriteIndentedString(writer, "function init(): ()\n")
 	writer.Depth++
 	WriteIndentedString(writer, "reset_registers()\n")
 
@@ -275,7 +276,7 @@ func AfterCompilation(writer *OutputWriter) []byte {
 	AddEnd(writer) // end the current label, if active
 
 	// check if invalid PC, then break
-	WriteIndentedString(writer, "function start(startPosition)\n")
+	WriteIndentedString(writer, "function start(startPosition: number): ()\n")
 	writer.Depth++
 	WriteIndentedString(writer, "PC = startPosition\n")
 	WriteIndentedString(writer, "while FUNCS[PC] do\n")
@@ -290,6 +291,7 @@ func AfterCompilation(writer *OutputWriter) []byte {
 	}
 	writer.Depth--
 	WriteIndentedString(writer, "end\n")
+	WriteIndentedString(writer, "flush_stdout()\n")
 	writer.Depth--
 	WriteIndentedString(writer, "end\n")
 

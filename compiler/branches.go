@@ -33,7 +33,7 @@ func jalr(w *OutputWriter, command AssemblyCommand) {
 	w.Depth--
 	WriteIndentedString(w, "end\n")
 	AddEnd(w)
-	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
+	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
 	w.Depth++
 	w.MaxPC++
 	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)

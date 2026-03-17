@@ -16,7 +16,7 @@ func li(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func lui(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = lshift(%s, 12)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = bit32.lshift(%s, 12)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func lw(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = readi32(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))

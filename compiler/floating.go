@@ -30,24 +30,24 @@ func fnmsub(w *OutputWriter, command AssemblyCommand) {
 
 /** Sign */
 func fsgnj(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = abs(%s) * sgn(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = math.abs(%s) * math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fsgnjn(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = abs(%s) * -sgn(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = math.abs(%s) * -math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fsgnjx(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s * -sgn(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = %s * -math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 
 /** Other math */
 func fsqrt(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = sqrt(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = math.sqrt(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fmin(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = min(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = math.min(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fmax(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = max(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = math.max(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 
 /** Comparators */
@@ -73,10 +73,21 @@ func fcvt_s_w(w *OutputWriter, command AssemblyCommand) {
 }
 func fcvt_d_w(w *OutputWriter, command AssemblyCommand) {
 	if w.Options.Comments {
+
 		WriteIndentedString(w, "%s = int_to_float(%s) -- Double will just be a less precise float\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 
 	} else {
 		WriteIndentedString(w, "%s = int_to_float(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	}
+}
+
+func fcvt_d_wu(w *OutputWriter, command AssemblyCommand) {
+	if w.Options.Comments {
+
+		WriteIndentedString(w, "%s = int_to_float(u32(%s)) -- Double will just be a less precise float\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+
+	} else {
+		WriteIndentedString(w, "%s = int_to_float(u32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 	}
 }
 func fcvt_w_d(w *OutputWriter, command AssemblyCommand) {
@@ -106,5 +117,5 @@ func fneg(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = -%s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fabs(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = abs(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = math.abs(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }

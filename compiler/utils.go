@@ -26,6 +26,7 @@ func AddEnd(w *OutputWriter) {
 		return
 	}
 
+	WriteIndentedString(w, "return false\n")
 	w.Depth--
 	if w.Options.Comments {
 		WriteIndentedString(w, "end -- %s (%s)\n", w.CurrentLabel.Name, w.CurrentLabel.Name)
@@ -126,7 +127,7 @@ func JumpTo(w *OutputWriter, label string, link bool) {
 }
 func CutAndLink(w *OutputWriter) {
 	AddEnd(w)
-	WriteIndentedString(w, "FUNCS[%d] = function() -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
+	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
 	w.Depth++
 	w.MaxPC++
 	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)

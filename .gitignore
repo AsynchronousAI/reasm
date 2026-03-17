@@ -8,3 +8,4 @@ sourcemap.json
 *.c
 main
 platform.info
+profile.*

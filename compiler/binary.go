@@ -2,13 +2,13 @@ package compiler
 
 /** Binary Shifts */
 func sll(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = band(lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.band(bit32.lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func srl(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = band(rshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.band(bit32.rshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func sra(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = band(arshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.band(bit32.arshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 
 /* Comparision */
@@ -34,14 +34,14 @@ func sgtz(w *OutputWriter, command AssemblyCommand) {
 
 /** Binary Operations */
 func and(w *OutputWriter, command AssemblyCommand) { /* and & andi instructions */
-	WriteIndentedString(w, "%s = band(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.band(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func xor(w *OutputWriter, command AssemblyCommand) { /* xor & xori instructions */
-	WriteIndentedString(w, "%s = bxor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.bxor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func or(w *OutputWriter, command AssemblyCommand) { /* or & ori instructions */
-	WriteIndentedString(w, "%s = bor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.bor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func not(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bnot(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = bit32.bnot(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }

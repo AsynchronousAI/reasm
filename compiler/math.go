@@ -30,5 +30,5 @@ func neg(w *OutputWriter, command AssemblyCommand) { /* neg & negi instructions 
 
 /** Math Descendants */
 func mulh(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = band(lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	WriteIndentedString(w, "%s = bit32.band(bit32.lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }

@@ -1,27 +1,28 @@
+--!strict
+--!native
+--!optimize 2
+
 -- Compiled from RISC-V assembly.
 -- API
-local mem = 2048 -- 2KB of RAM
-local memory = buffer.create(mem) -- our memory!
-local r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-local r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-local r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-local r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local mem: number = 2048 -- 2KB of RAM
+local memory: buffer = buffer.create(mem) -- our memory!
+local r1: number, r2: number, r3: number, r4: number, r5: number, r6: number, r7: number, r8: number, r9: number, r10: number, r11: number, r12: number, r13: number, r14: number, r15: number, r16: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r17: number, r18: number, r19: number, r20: number, r21: number, r22: number, r23: number, r24: number, r25: number, r26: number, r27: number, r28: number, r29: number, r30: number, r31: number, r32: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r33: number, r34: number, r35: number, r36: number, r37: number, r38: number, r39: number, r40: number, r41: number, r42: number, r43: number, r44: number, r45: number, r46: number, r47: number, r48: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+local r49: number, r50: number, r51: number, r52: number, r53: number, r54: number, r55: number, r56: number, r57: number, r58: number, r59: number, r60: number, r61: number, r62: number, r63: number, r64: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
 -- Variables
-local PC = 1 -- current position
-local mallocDepth = 0
-local stdout_cache = ""
+local PC: number = 1 -- current position
+local mallocDepth: number = 0
+local stdout_cache: string = ""
 
 -- Utility
 --- 32-bit helpers
-local function mask32(v)
+local function u32(v: number): number
     return bit32.band(v, 0xFFFFFFFF)
 end
-local function u32(v)
-    return mask32(v)
-end
 local function i32(v)
-    local n = mask32(v)
+    local n = u32(v)
     if n >= 0x80000000 then
         return n - 0x100000000
     end
@@ -29,7 +30,7 @@ local function i32(v)
 end
 
 --- Base (can be found in generated code)
-local function idiv_trunc(a, b)
+local function idiv_trunc(a: number, b: number): number
     if b == 0 then error("division by zero") end
     if a >= 0 then
         return (a - (a % b)) // b
@@ -37,38 +38,29 @@ local function idiv_trunc(a, b)
         return -((-a) - ((-a) % b)) // b
     end
 end
-local function float_to_int(f)
-    local i = string.unpack("i", string.pack("f", f))
-    return i
+local function float_to_int(f: number): number
+    return string.unpack("i", string.pack("f", f))
 end
-local function int_to_float(i)
+local function int_to_float(i: number): number
     local packed = string.pack("I4", i)
-    local f = string.unpack("f", packed)
-    return f
+    return string.unpack("f", packed)
 end
-local function float_to_double(f)
-    -- Pack float into 4 bytes
+local function float_to_double(f: number): number
     local packed_f = string.pack("f", f)
-
-    -- Pad with 4 zero bytes to make 8 bytes
     local padded = packed_f .. ("\0\0\0\0")
-
-    -- Unpack as double
-    local d = string.unpack("d", padded)
-    return d
+    return string.unpack("d", padded)
 end
-local function two_words_to_double(highWord, lowWord)
-    local packed = string.pack("<I4I4", lowWord, highWord)
-    local d = string.unpack("d", packed)
-    return d
+local function two_words_to_double(highWord: number, lowWord: number): number
+    local packed = string.pack("<I4I4", u32(lowWord), u32(highWord))
+    return string.unpack("d", packed)
 end
-local function hi(addr)
+local function hi(addr: number): number
     return bit32.lshift(bit32.rshift(addr, 12), 12)
 end
-local function lo(addr)
+local function lo(addr: number): number
     return bit32.band(addr, 0xFFF)
 end
-function fclass(x)
+function fclass(x: number): number
     local result = 0
 
     if x ~= x then
@@ -108,7 +100,7 @@ function fclass(x)
 
     return result
 end
-function reset_registers()
+function reset_registers(): ()
     r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -116,11 +108,11 @@ function reset_registers()
 end
 
 --- Strings
-local function read_string(startPointer)
+local function read_string(startPointer: number): string
     -- read null terminated strings from memory
-    local pointer = startPointer
-    local str = ""
-    local byte
+    local pointer: number = startPointer
+    local str: string = ""
+    local byte: number = 0
     repeat
         byte = buffer.readbits(memory, pointer * 8, 8)
         if byte == 0 then break end
@@ -130,11 +122,11 @@ local function read_string(startPointer)
     until false
     return str
 end
-function format_string(fmt, args)
-    fmt = read_string(fmt)
-    local arg_index = 1
+function format_string(fmt: number, args: {number}): string
+    local fmtString: string = read_string(fmt)
+    local arg_index: number = 1
 
-    return fmt:gsub("%%([%d%.]*[dfseX])", function(spec)
+    return fmtString:gsub("%%([%d%.]*[dfseX])", function(spec)
         local val = args[arg_index]
         arg_index += 1
 
@@ -163,16 +155,16 @@ end
 
 
 --- Memory
-local function malloc(size)
+local function malloc(size: number): number
     mallocDepth+=size
     return buffer.len(memory)-mallocDepth
 end
 
 --- Args
-local function get_args()
-   return r11, r12, r13, r14, r15, r16, r17, r18
+local function get_args(): (number, number, number, number, number, number, number, number)
+    return r11, r12, r13, r14, r15, r16, r17, r18
 end
-local function push_args(a1, a2, a3, a4, a5, a6, a7, a8)
+local function push_args(a1: number?, a2: number?, a3: number?, a4: number?, a5: number?, a6: number?, a7: number?, a8: number?)
     r11 = a1 or 0
     r12 = a2 or 0
     r13 = a3 or 0
@@ -182,10 +174,10 @@ local function push_args(a1, a2, a3, a4, a5, a6, a7, a8)
     r17 = a7 or 0
     r18 = a8 or 0
 end
-local function get_f_args()
-   return r43, r44, r45, r46, r47, r48, r49, r50
+local function get_f_args(): (number, number, number, number, number, number, number, number)
+    return r43, r44, r45, r46, r47, r48, r49, r50
 end
-local function push_f_args(a1, a2, a3, a4, a5, a6, a7, a8)
+local function push_f_args(a1: number?, a2: number?, a3: number?, a4: number?, a5: number?, a6: number?, a7: number?, a8: number?)
     r43 = a1 or 0
     r44 = a2 or 0
     r45 = a3 or 0
@@ -212,6 +204,10 @@ local functions = {
 
         buffer.copy(memory, dest, memory, src, count)
     end,
+    ["memset"] = function()
+        local dest, value, count = get_args()
+        buffer.fill(memory, dest, bit32.band(value, 0xFF), count)
+    end,
     ["malloc"] = function()
         local size = get_args()
         local dest = malloc(size)
@@ -228,7 +224,8 @@ local functions = {
         end
     end,
     ["puts"] = function()
-        local str = read_string(get_args())
+        local fmt = get_args()
+        local str = read_string(fmt)
         stdout_cache = stdout_cache .. str
         flush_stdout()
     end,
@@ -253,43 +250,12 @@ local functions = {
 --{extentions here}
 
 -- Localized Functions
---- bit32
-local band = bit32.band
-local bor = bit32.bor
-local lshift = bit32.lshift
-local rshift = bit32.rshift
-local arshift = bit32.arshift
-local bxor = bit32.bxor
-
 --- buffer
-local writestring = buffer.writestring
-local writei8 = buffer.writei8
-local writei16 = buffer.writei16
-local writei32 = buffer.writei32
-local readi8 = buffer.readi8
-local readi16 = buffer.readi16
-local readi32 = buffer.readi32
-local writeu8 = buffer.writeu8
-local writeu16 = buffer.writeu16
-local writeu32 = buffer.writeu32
-local readu8 = buffer.readu8
-local readu16 = buffer.readu16
-local readu32 = buffer.readu32
-local writef32 = buffer.writef32
-local writef64 = buffer.writef64
-local readf32 = buffer.readf32
-local readf64 = buffer.readf64
-local fill = buffer.fill
+local writei8, writei16, writei32 = buffer.writei8, buffer.writei16, buffer.writei32
+local readi8, readi16, readi32 = buffer.readi8, buffer.readi16, buffer.readi32
+local writeu8, writeu16, writeu32, writestring, fill = buffer.writeu8, buffer.writeu16, buffer.writeu32, buffer.writestring, buffer.fill
+local readu8, readu16, readu32, readf32, readf64, writef32, writef64 = buffer.readu8, buffer.readu16, buffer.readu32, buffer.readf32, buffer.readf64, buffer.writef32, buffer.writef64
 
---- math
-local sqrt = math.sqrt
-local abs = math.abs
-local sgn = math.sign
-local min = math.min
-local max = math.max
-local floor = math.floor
-
-local FUNCS = {}
+local FUNCS: {[number]: () -> boolean} = {}
 ---- Auto generated code starts here
 --{code here}
-flush_stdout()

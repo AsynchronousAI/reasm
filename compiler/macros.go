@@ -15,7 +15,7 @@ func label(w *OutputWriter, command AssemblyCommand) {
 		return
 	}
 
-	WriteIndentedString(w, "FUNCS[%d] = function() -- %s\n", w.MaxPC, command.Name)
+	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s\n", w.MaxPC, command.Name)
 	w.Depth++
 	w.MaxPC++
 }
