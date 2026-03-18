@@ -43,8 +43,8 @@ local math_float_returns = {
 }
 
 local math_int_returns = {
-    isnan = function(x) return x ~= x and 1 or 0 end,
-    isinf = function(x) return (x == math.huge or x == -math.huge) and 1 or 0 end,
+    isnan = math.isnan,
+    isinf = math.isinf,
     signbit = function(x) return x < 0 and 1 or 0 end,
 }
 
