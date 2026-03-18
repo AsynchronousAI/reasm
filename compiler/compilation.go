@@ -166,9 +166,11 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"feq.s": feq,
 	"flt.s": flt,
 	"fle.s": fle,
+	"fgt.s": fgt,
 	"feq.d": feq,
 	"flt.d": flt,
 	"fle.d": fle,
+	"fgt.d": fgt,
 
 	/** Fused */
 	"fmadd.s":  fmadd,
@@ -185,6 +187,7 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"fmv.d": move,
 	"fmv.s": move,
 
+	"fmv.s.x":   fmv_w_x,
 	"fmv.w.x":   fmv_w_x,
 	"fmv.x.w":   fmv_x_w,
 	"fcvt.w.s":  fcvt_w_s,

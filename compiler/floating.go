@@ -60,6 +60,9 @@ func flt(w *OutputWriter, command AssemblyCommand) {
 func fle(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = if %s <= %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
+func fgt(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = if %s > %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
 
 /** Conversion */
 func fcvt_d_s(w *OutputWriter, command AssemblyCommand) {

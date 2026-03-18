@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var symbolWithOffset = regexp.MustCompile(`^([.$A-Za-z_][.$A-Za-z0-9_]*)([+-]\d+)$`)
+
 func ReadDirective(directive string) []string {
 	result := make([]string, 0, 4)
 	i := 0
@@ -121,7 +123,7 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 
 	var compiled string = argument.Source
 
-	if memoryAddress, ok := w.MemoryMap[argument.Source]; ok {
+	if memoryAddress, ok := resolveSymbolAddress(w, argument.Source); ok {
 		if argument.Modifier != "" {
 			/* resolve to plain number for use inside modifier call, add comment outside */
 			inner := fmt.Sprintf("%d", memoryAddress)
@@ -191,6 +193,30 @@ func resolveModifierLiteral(modifier string, address int) (int, bool) {
 		return 0, false
 	}
 }
+
+func resolveSymbolAddress(w *OutputWriter, symbol string) (int, bool) {
+	if memoryAddress, ok := w.MemoryMap[symbol]; ok {
+		return memoryAddress, true
+	}
+
+	matches := symbolWithOffset.FindStringSubmatch(symbol)
+	if matches == nil {
+		return 0, false
+	}
+
+	offset, err := strconv.Atoi(matches[2])
+	if err != nil {
+		return 0, false
+	}
+
+	baseAddress, ok := w.MemoryMap[matches[1]]
+	if !ok {
+		return 0, false
+	}
+
+	return baseAddress + offset, true
+}
+
 func JumpTo(w *OutputWriter, label string, link bool) {
 	address := FindLabelAddress(w, label)
 
