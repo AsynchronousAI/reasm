@@ -42,6 +42,35 @@ func call(w *OutputWriter, command AssemblyCommand) {
 	/* cut the jump */
 	CutAndLink(w)
 }
+func tail(w *OutputWriter, command AssemblyCommand) {
+	var function = command.Arguments[0].Source
+
+	/* tail-call: jump without link */
+	WriteIndentedString(w, "if functions[\"%s\"] then\n", function)
+	w.Depth++
+	WriteIndentedString(w, "functions[\"%s\"]()\n", function)
+	WriteIndentedString(w, "if r2 ~= 0 then\n")
+	w.Depth++
+	WriteIndentedString(w, "PC = r2\n")
+	WriteIndentedString(w, "r2 = 0\n")
+	WriteIndentedString(w, "return true\n")
+	w.Depth--
+	WriteIndentedString(w, "else\n")
+	w.Depth++
+	WriteIndentedString(w, "PC = 0\n")
+	WriteIndentedString(w, "return true\n")
+	w.Depth--
+	WriteIndentedString(w, "end\n")
+	w.Depth--
+	WriteIndentedString(w, "else\n")
+	w.Depth++
+	JumpTo(w, function, false)
+	w.Depth--
+	WriteIndentedString(w, "end\n")
+
+	/* cut the jump */
+	CutAndLink(w)
+}
 func move(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }

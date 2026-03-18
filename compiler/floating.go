@@ -63,16 +63,27 @@ func fle(w *OutputWriter, command AssemblyCommand) {
 func fgt(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = if %s > %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
+func fge(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = if %s >= %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+}
 
 /** Conversion */
 func fcvt_d_s(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_w_s(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = float_to_int(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "do\n")
+	w.Depth++
+	WriteIndentedString(w, "local v: number = %s\n", CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = if v >= 0 then math.floor(v) else math.ceil(v)\n", CompileRegister(w, command.Arguments[0]))
+	w.Depth--
+	WriteIndentedString(w, "end\n")
 }
 func fcvt_s_w(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = int_to_float(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = i32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+}
+func fcvt_s_wu(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = u32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_d_w(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = i32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
@@ -82,12 +93,12 @@ func fcvt_d_wu(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = u32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_w_d(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Comments {
-		WriteIndentedString(w, "%s = float_to_int(%s) -- Double will just be a less precise float\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-
-	} else {
-		WriteIndentedString(w, "%s = float_to_int(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-	}
+	WriteIndentedString(w, "do\n")
+	w.Depth++
+	WriteIndentedString(w, "local v: number = %s\n", CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = if v >= 0 then math.floor(v) else math.ceil(v)\n", CompileRegister(w, command.Arguments[0]))
+	w.Depth--
+	WriteIndentedString(w, "end\n")
 }
 
 /** Move */

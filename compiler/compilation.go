@@ -167,10 +167,12 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"flt.s": flt,
 	"fle.s": fle,
 	"fgt.s": fgt,
+	"fge.s": fge,
 	"feq.d": feq,
 	"flt.d": flt,
 	"fle.d": fle,
 	"fgt.d": fgt,
+	"fge.d": fge,
 
 	/** Fused */
 	"fmadd.s":  fmadd,
@@ -193,8 +195,9 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"fcvt.w.s":  fcvt_w_s,
 	"fcvt.wu.s": fcvt_w_s,
 	"fcvt.s.w":  fcvt_s_w,
-	"fcvt.s.wu": fcvt_s_w,
+	"fcvt.s.wu": fcvt_s_wu,
 	"fcvt.d.s":  fcvt_d_s,
+	"fcvt.s.d":  fcvt_d_s,
 	"fcvt.w.d":  fcvt_w_d,
 	"fcvt.d.w":  fcvt_d_w,
 	"fcvt.d.wu": fcvt_d_wu,
@@ -203,6 +206,7 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"auipc": auipc,
 	"ret":   ret,
 	"call":  call,
+	"tail":  tail,
 	"mv":    move,
 	"nop":   nop,
 
@@ -305,7 +309,7 @@ func BeforeCompilation(writer *OutputWriter) {
 			writer.Commands[i].Ignore = true
 			writer.PendingData = PendingData{} // reset so first directive under this label always saves pointer
 		}
-		if writer.Commands[i].Type == Instruction {
+		if writer.Commands[i].Type == Instruction && writer.Commands[i].Name != "" {
 			if writer.CurrentLabel != nil {
 				writer.CurrentLabel.Ignore = false
 			}

@@ -261,7 +261,7 @@ func FindInArray(array []string, target string) int {
 }
 
 func isCutoffInstruction(instruction AssemblyCommand) bool {
-	return instruction.Type == Instruction && (instruction.Name == "call" || instruction.Name == "jal" || instruction.Name == "jalr")
+	return instruction.Type == Instruction && (instruction.Name == "call" || instruction.Name == "tail" || instruction.Name == "jal" || instruction.Name == "jalr")
 }
 func IncrementFunctionName(name string) string {
 	re := regexp.MustCompile(`^(.*?)(?:_ext_(\d+))?$`)

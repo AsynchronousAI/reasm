@@ -68,36 +68,31 @@ function fclass(x: number): number
     local result = 0
 
     if x ~= x then
-        -- NaN
-        if x < 0 then
-            result = bit32.bor(result, bit32.lshift(1, 0)) -- -NaN
-        else
-            result = bit32.bor(result, bit32.lshift(1, 9)) -- +NaN
-        end
+        result = bit32.bor(result, bit32.lshift(1, 9)) -- qNaN (cannot distinguish sNaN in Luau)
     elseif x == math.huge then
-        result = bit32.bor(result, bit32.lshift(1, 8)) -- +Inf
+        result = bit32.bor(result, bit32.lshift(1, 7)) -- +Inf
     elseif x == -math.huge then
-        result = bit32.bor(result, bit32.lshift(1, 1)) -- -Inf
+        result = bit32.bor(result, bit32.lshift(1, 0)) -- -Inf
     elseif x == 0 then
-        if 1/x == math.huge then
-            result = bit32.bor(result, bit32.lshift(1, 5)) -- +Zero
+        if 1/x == -math.huge then
+            result = bit32.bor(result, bit32.lshift(1, 3)) -- -Zero
         else
-            result = bit32.bor(result, bit32.lshift(1, 4)) -- -Zero
+            result = bit32.bor(result, bit32.lshift(1, 4)) -- +Zero
         end
     else
         local absx = math.abs(x)
         local min_normal = 2.2250738585072014e-308 -- 2^-1022
         if absx < min_normal then
             if x > 0 then
-                result = bit32.bor(result, bit32.lshift(1, 6)) -- +Subnormal
+                result = bit32.bor(result, bit32.lshift(1, 5)) -- +Subnormal
             else
-                result = bit32.bor(result, bit32.lshift(1, 3)) -- -Subnormal
+                result = bit32.bor(result, bit32.lshift(1, 2)) -- -Subnormal
             end
         else
             if x > 0 then
-                result = bit32.bor(result, bit32.lshift(1, 7)) -- +Normal
+                result = bit32.bor(result, bit32.lshift(1, 6)) -- +Normal
             else
-                result = bit32.bor(result, bit32.lshift(1, 2)) -- -Normal
+                result = bit32.bor(result, bit32.lshift(1, 1)) -- -Normal
             end
         end
     end
@@ -131,15 +126,16 @@ function format_string(fmt: number, args: {number}): string
     local fmtString: string = read_string(fmt)
     local arg_index: number = 1
 
-    return fmtString:gsub("%%([%d%.]*[dfseX])", function(spec)
+    return fmtString:gsub("%%([%d%.]*[lL]?[dfseX])", function(spec)
+        local fmtSpec = spec:gsub("[lL]", "")
         if spec:sub(-1) == "d" then
             local val = args[arg_index]
             arg_index += 1
-            return tostring(i32(val))
+            return string.format("%"..fmtSpec, i32(val))
         elseif spec:sub(-1) == "X" then
             local val = args[arg_index]
             arg_index += 1
-            return string.format("%X", u32(val))
+            return string.format("%"..fmtSpec, u32(val))
         elseif spec:sub(-1) == "f" then
             if arg_index % 2 == 1 then
                 arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
@@ -147,7 +143,7 @@ function format_string(fmt: number, args: {number}): string
             local low = args[arg_index]; arg_index += 1
             local high = args[arg_index]; arg_index += 1
             local float = two_words_to_double(high, low)
-            return string.format("%"..spec, float)
+            return string.format("%"..fmtSpec, float)
         elseif spec:sub(-1) == "s" then
             local val = args[arg_index]
             arg_index += 1
@@ -159,7 +155,7 @@ function format_string(fmt: number, args: {number}): string
             local low = args[arg_index]; arg_index += 1
             local high = args[arg_index]; arg_index += 1
             local float = two_words_to_double(high, low)
-            return string.format("%"..spec, float)
+            return string.format("%"..fmtSpec, float)
         else
             return spec
         end
