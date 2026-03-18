@@ -3,7 +3,8 @@ package compiler
 import (
 	"encoding/base64"
 	"strconv"
-	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func label(w *OutputWriter, command AssemblyCommand) {
@@ -29,18 +30,24 @@ func save_pointer(w *OutputWriter) {
 }
 
 func asciz(w *OutputWriter, components []string) {
-	var data = strings.Trim(components[1], "\"")
+	if len(components) < 2 {
+		return
+	}
+
+	data, err := UnescapeDirectiveString(components[1])
+	if err != nil {
+		log.Warnf("failed to parse string directive %q: %v", components[1], err)
+		data = components[1]
+	}
+
 	w.PendingData.Data = data
 	w.PendingData.Type = PendingDataTypeString
 
-	if w.Options.Comments {
-		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\") -- %s\n", w.MemoryDevelopmentPointer, data, w.CurrentLabel.Name)
-	} else {
-		WriteIndentedString(w, "writestring(memory, %d, \"%s\\0\")\n", w.MemoryDevelopmentPointer, data)
-	}
+	dataWithNull := append([]byte(data), 0)
+	WriteIndentedString(w, "writestring(memory, %d, %s)\n", w.MemoryDevelopmentPointer, luauStringExpression(string(dataWithNull)))
 
 	save_pointer(w)
-	w.MemoryDevelopmentPointer += int32(len(data) + 1)
+	w.MemoryDevelopmentPointer += int32(len(dataWithNull))
 }
 func base64data(w *OutputWriter, components []string) {
 	if len(components) < 2 {

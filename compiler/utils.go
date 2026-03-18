@@ -8,19 +8,97 @@ import (
 )
 
 func ReadDirective(directive string) []string {
-	re := regexp.MustCompile(`"([^"]*)"|([^,\s]+)`)
-	matches := re.FindAllStringSubmatch(directive, -1)
+	result := make([]string, 0, 4)
+	i := 0
+	for i < len(directive) {
+		for i < len(directive) && (directive[i] == ' ' || directive[i] == '\t' || directive[i] == ',') {
+			i++
+		}
+		if i >= len(directive) {
+			break
+		}
 
-	result := make([]string, 0, len(matches))
-	for _, match := range matches {
-		if match[1] != "" || (len(match[0]) > 0 && match[0][0] == '"') {
-			result = append(result, match[1])
-		} else {
-			result = append(result, strings.TrimSpace(match[2]))
+		if directive[i] == '"' {
+			i++ // consume opening quote
+			var sb strings.Builder
+			escaped := false
+			for i < len(directive) {
+				ch := directive[i]
+				i++
+				if escaped {
+					sb.WriteByte(ch)
+					escaped = false
+					continue
+				}
+				if ch == '\\' {
+					sb.WriteByte(ch)
+					escaped = true
+					continue
+				}
+				if ch == '"' {
+					break
+				}
+				sb.WriteByte(ch)
+			}
+			result = append(result, sb.String())
+			continue
+		}
+
+		start := i
+		for i < len(directive) && directive[i] != ',' && directive[i] != ' ' && directive[i] != '\t' {
+			i++
+		}
+		token := strings.TrimSpace(directive[start:i])
+		if token != "" {
+			result = append(result, token)
 		}
 	}
 	return result
 }
+
+func UnescapeDirectiveString(raw string) (string, error) {
+	return strconv.Unquote(`"` + raw + `"`)
+}
+
+func luauLongBracketLiteral(content string) string {
+	delimiter := ""
+	for strings.Contains(content, "]"+delimiter+"]") {
+		delimiter += "="
+	}
+	return fmt.Sprintf("[%s[%s]%s]", delimiter, content, delimiter)
+}
+
+func luauStringExpression(content string) string {
+	if content == "" {
+		return `[[]]`
+	}
+
+	parts := make([]string, 0, 4)
+	bytes := []byte(content)
+	for i := 0; i < len(bytes); {
+		if bytes[i] == 0 {
+			run := 1
+			for i+run < len(bytes) && bytes[i+run] == 0 {
+				run++
+			}
+			if run == 1 {
+				parts = append(parts, `"\0"`)
+			} else {
+				parts = append(parts, fmt.Sprintf(`string.rep("\0", %d)`, run))
+			}
+			i += run
+			continue
+		}
+
+		start := i
+		for i < len(bytes) && bytes[i] != 0 {
+			i++
+		}
+		parts = append(parts, luauLongBracketLiteral(string(bytes[start:i])))
+	}
+	return strings.Join(parts, " .. ")
+}
+
 func AddEnd(w *OutputWriter) {
 	if w.Depth == 0 {
 		return
