@@ -16,7 +16,6 @@ local PC: number = 1 -- current position
 local mallocDepth: number = 0
 local stdout_cache: string = ""
 local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
-local accurate: boolean = --{accurate here}
 
 -- Utility
 --- 32-bit helpers
@@ -28,9 +27,6 @@ local function u32(v: number): number
     return n
 end
 local function i32(v)
-    if not accurate then
-        return v
-    end
     local n = u32(v)
     if n >= 0x80000000 then
         return n - 0x100000000
@@ -38,34 +34,7 @@ local function i32(v)
     return n
 end
 local function f32(v: number): number
-    if not accurate then
-        return v
-    end
     return string.unpack("f", string.pack("f", v))
-end
-local function f32_add(a: number, b: number): number
-    return f32(a + b)
-end
-local function f32_sub(a: number, b: number): number
-    return f32(a - b)
-end
-local function f32_mul(a: number, b: number): number
-    return f32(a * b)
-end
-local function f32_div(a: number, b: number): number
-    return f32(a / b)
-end
-local function f32_fmadd(a: number, b: number, c: number): number
-    return f32(a * b + c)
-end
-local function f32_fmsub(a: number, b: number, c: number): number
-    return f32(a * b - c)
-end
-local function f32_fnmadd(a: number, b: number, c: number): number
-    return f32(-(a * b) + c)
-end
-local function f32_fnmsub(a: number, b: number, c: number): number
-    return f32(-(a * b) - c)
 end
 
 --- Base (can be found in generated code)

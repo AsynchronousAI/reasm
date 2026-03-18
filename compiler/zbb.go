@@ -30,19 +30,27 @@ func cpop(w *OutputWriter, command AssemblyCommand) {
 
 /* Min/Max */
 func min(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.min(i32(%s), i32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = math.min(%s, %s)\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 }
 
 func minu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.min(u32(%s), u32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = math.min(%s, %s)\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 }
 
 func max(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.max(i32(%s), i32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = math.max(%s, %s)\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 }
 
 func maxu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.max(u32(%s), u32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = math.max(%s, %s)\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 }
 
 /* Sign/Zero Extension */
@@ -50,7 +58,7 @@ func sext_b(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "do\n")
 	w.Depth++
 	WriteIndentedString(w, "local val: number = bit32.band(%s, 0xFF)\n", CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = if val >= 0x80 then i32(val - 0x100) else val\n", CompileRegister(w, command.Arguments[0]))
+	WriteIndentedString(w, "%s = if val >= 0x80 then %s else val\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, "val - 0x100"))
 	w.Depth--
 	WriteIndentedString(w, "end\n")
 }
@@ -59,7 +67,7 @@ func sext_h(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "do\n")
 	w.Depth++
 	WriteIndentedString(w, "local val: number = bit32.band(%s, 0xFFFF)\n", CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = if val >= 0x8000 then i32(val - 0x10000) else val\n", CompileRegister(w, command.Arguments[0]))
+	WriteIndentedString(w, "%s = if val >= 0x8000 then %s else val\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, "val - 0x10000"))
 	w.Depth--
 	WriteIndentedString(w, "end\n")
 }

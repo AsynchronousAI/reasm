@@ -52,10 +52,12 @@ func jr(w *OutputWriter, command AssemblyCommand) {
 
 /** Branching */
 func blt(w *OutputWriter, command AssemblyCommand) {
+	lhs := CompileRegister(w, command.Arguments[0])
+	rhs := CompileRegister(w, command.Arguments[1])
 	if command.Name == "bltu" {
-		WriteIndentedString(w, "if u32(%s) < u32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s < %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 	} else {
-		WriteIndentedString(w, "if i32(%s) < i32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s < %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 	}
 	w.Depth++
 	JumpTo(w, command.Arguments[2].Source, false)
@@ -77,10 +79,12 @@ func bne(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "end\n")
 }
 func bge(w *OutputWriter, command AssemblyCommand) {
+	lhs := CompileRegister(w, command.Arguments[0])
+	rhs := CompileRegister(w, command.Arguments[1])
 	if command.Name == "bgeu" {
-		WriteIndentedString(w, "if u32(%s) >= u32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s >= %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 	} else {
-		WriteIndentedString(w, "if i32(%s) >= i32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s >= %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 	}
 	w.Depth++
 	JumpTo(w, command.Arguments[2].Source, false)
@@ -102,10 +106,12 @@ func beq(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "end\n")
 }
 func bgt(w *OutputWriter, command AssemblyCommand) {
+	lhs := CompileRegister(w, command.Arguments[0])
+	rhs := CompileRegister(w, command.Arguments[1])
 	if command.Name == "bgtu" {
-		WriteIndentedString(w, "if u32(%s) > u32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s > %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 	} else {
-		WriteIndentedString(w, "if i32(%s) > i32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s > %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 	}
 	w.Depth++
 	JumpTo(w, command.Arguments[2].Source, false)
@@ -113,10 +119,12 @@ func bgt(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "end\n")
 }
 func ble(w *OutputWriter, command AssemblyCommand) {
+	lhs := CompileRegister(w, command.Arguments[0])
+	rhs := CompileRegister(w, command.Arguments[1])
 	if command.Name == "bleu" {
-		WriteIndentedString(w, "if u32(%s) <= u32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s <= %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 	} else {
-		WriteIndentedString(w, "if i32(%s) <= i32(%s) then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+		WriteIndentedString(w, "if %s <= %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 	}
 	w.Depth++
 	JumpTo(w, command.Arguments[2].Source, false)

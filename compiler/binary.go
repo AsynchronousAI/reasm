@@ -13,10 +13,12 @@ func sra(w *OutputWriter, command AssemblyCommand) {
 
 /* Comparision */
 func slt(w *OutputWriter, command AssemblyCommand) { /* sltu & sltui instructions */
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
 	if command.Name == "sltu" || command.Name == "sltiu" {
-		WriteIndentedString(w, "%s = if (u32(%s) < u32(%s)) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		WriteIndentedString(w, "%s = if (%s < %s) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
 	} else {
-		WriteIndentedString(w, "%s = if (i32(%s) < i32(%s)) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		WriteIndentedString(w, "%s = if (%s < %s) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
 	}
 }
 func seqz(w *OutputWriter, command AssemblyCommand) {

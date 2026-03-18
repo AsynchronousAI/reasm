@@ -2,30 +2,42 @@ package compiler
 
 /* Math */
 func add(w *OutputWriter, command AssemblyCommand) { /* add & addi instructions */
-	WriteIndentedString(w, "%s = i32(%s + %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	expr := CompileRegister(w, command.Arguments[1]) + " + " + CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 }
 func sub(w *OutputWriter, command AssemblyCommand) { /* sub & subi instructions */
-	WriteIndentedString(w, "%s = i32(%s - %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	expr := CompileRegister(w, command.Arguments[1]) + " - " + CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 }
 func mul(w *OutputWriter, command AssemblyCommand) { /* mul & muli instructions */
-	WriteIndentedString(w, "%s = i32(%s * %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	expr := CompileRegister(w, command.Arguments[1]) + " * " + CompileRegister(w, command.Arguments[2])
+	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 }
 func div(w *OutputWriter, command AssemblyCommand) { /* div & divi instructions */
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
 	if command.Name == "divu" {
-		WriteIndentedString(w, "%s = u32(idiv_trunc(u32(%s), u32(%s)))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		expr := "idiv_trunc(" + wrapU32Expr(w, lhs) + ", " + wrapU32Expr(w, rhs) + ")"
+		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, expr))
 	} else {
-		WriteIndentedString(w, "%s = i32(idiv_trunc(i32(%s), i32(%s)))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		expr := "idiv_trunc(" + wrapI32Expr(w, lhs) + ", " + wrapI32Expr(w, rhs) + ")"
+		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 	}
 }
 func rem(w *OutputWriter, command AssemblyCommand) { /* rem & remi instructions */
+	lhs := CompileRegister(w, command.Arguments[1])
+	rhs := CompileRegister(w, command.Arguments[2])
 	if command.Name == "remu" {
-		WriteIndentedString(w, "%s = u32(u32(%s) %% u32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		expr := wrapU32Expr(w, lhs) + " % " + wrapU32Expr(w, rhs)
+		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, expr))
 	} else {
-		WriteIndentedString(w, "%s = i32(i32(%s) %% i32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		expr := wrapI32Expr(w, lhs) + " % " + wrapI32Expr(w, rhs)
+		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 	}
 }
 func neg(w *OutputWriter, command AssemblyCommand) { /* neg & negi instructions */
-	WriteIndentedString(w, "%s = i32(-i32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	expr := "-" + wrapI32Expr(w, CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
 }
 
 /** Math Descendants */

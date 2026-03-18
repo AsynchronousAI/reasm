@@ -114,6 +114,20 @@ func AddEnd(w *OutputWriter) {
 		WriteIndentedString(w, "end\n")
 	}
 }
+
+func wrapI32Expr(w *OutputWriter, expr string) string {
+	if !w.Options.Accurate {
+		return expr
+	}
+	return fmt.Sprintf("i32(%s)", expr)
+}
+
+func wrapU32Expr(w *OutputWriter, expr string) string {
+	if !w.Options.Accurate {
+		return expr
+	}
+	return fmt.Sprintf("u32(%s)", expr)
+}
 func CompileRegister(w *OutputWriter, argument Argument) string {
 	/* does it work as a integer (its a plain) */
 	_, err := strconv.Atoi(argument.Source)
