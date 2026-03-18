@@ -4,7 +4,7 @@
 
 -- Compiled from RISC-V assembly.
 -- API
-local mem: number = 2048 -- 2KB of RAM
+local mem: number = --{memory here} -- bytes of RAM
 local memory: buffer = buffer.create(mem) -- our memory!
 local r1: number, r2: number, r3: number, r4: number, r5: number, r6: number, r7: number, r8: number, r9: number, r10: number, r11: number, r12: number, r13: number, r14: number, r15: number, r16: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 local r17: number, r18: number, r19: number, r20: number, r21: number, r22: number, r23: number, r24: number, r25: number, r26: number, r27: number, r28: number, r29: number, r30: number, r31: number, r32: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -16,22 +16,56 @@ local PC: number = 1 -- current position
 local mallocDepth: number = 0
 local stdout_cache: string = ""
 local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
+local accurate: boolean = --{accurate here}
 
 -- Utility
 --- 32-bit helpers
 local function u32(v: number): number
-    local n = bit32.band(v, 0xFFFFFFFF)
+    local n = math.floor(v % 0x100000000)
     if n < 0 then
-        return n + 0x100000000
+        n += 0x100000000
     end
     return n
 end
 local function i32(v)
+    if not accurate then
+        return v
+    end
     local n = u32(v)
     if n >= 0x80000000 then
         return n - 0x100000000
     end
     return n
+end
+local function f32(v: number): number
+    if not accurate then
+        return v
+    end
+    return string.unpack("f", string.pack("f", v))
+end
+local function f32_add(a: number, b: number): number
+    return f32(a + b)
+end
+local function f32_sub(a: number, b: number): number
+    return f32(a - b)
+end
+local function f32_mul(a: number, b: number): number
+    return f32(a * b)
+end
+local function f32_div(a: number, b: number): number
+    return f32(a / b)
+end
+local function f32_fmadd(a: number, b: number, c: number): number
+    return f32(a * b + c)
+end
+local function f32_fmsub(a: number, b: number, c: number): number
+    return f32(a * b - c)
+end
+local function f32_fnmadd(a: number, b: number, c: number): number
+    return f32(-(a * b) + c)
+end
+local function f32_fnmsub(a: number, b: number, c: number): number
+    return f32(-(a * b) - c)
 end
 
 --- Base (can be found in generated code)

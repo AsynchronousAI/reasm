@@ -2,6 +2,7 @@ package compiler
 
 import (
 	_ "embed"
+	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -12,15 +13,31 @@ var luau_boilerplate string
 
 /* Float arithmetic helpers to avoid integer wrapping */
 func fadd(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_add(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fsub(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_sub(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s - %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fmul(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_mul(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s * %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 func fdiv(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_div(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s / %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
 }
 
@@ -413,6 +430,8 @@ return {
 
 	replacer := strings.NewReplacer(
 		"--{extentions here}", extensions,
+		"--{accurate here}", fmt.Sprintf("%t", writer.Options.Accurate),
+		"--{memory here}", fmt.Sprintf("%d", writer.Options.Memory),
 		"--{code here}", code,
 	)
 	return []byte(replacer.Replace(luau_boilerplate))

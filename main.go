@@ -13,6 +13,8 @@ import (
 func main() {
 	var enableComments bool
 	var enableTrace bool
+	var enableAccurate bool
+	var memorySize int
 	var mode string
 	var outputFile string
 	var mainSymbol string
@@ -36,6 +38,10 @@ func main() {
 				log.Error("invalid mode. Valid modes are: module, main, bench")
 				return nil
 			}
+			if memorySize <= 0 {
+				log.Error("invalid memory size. --memory must be greater than 0")
+				return nil
+			}
 
 			/* read input file */
 			if len(inputFiles) > 1 {
@@ -54,6 +60,8 @@ func main() {
 			processed := compiler.Compile(file, compiler.Options{
 				Comments:   enableComments,
 				Trace:      enableTrace,
+				Accurate:   enableAccurate,
+				Memory:     memorySize,
 				Mode:       modeLower,
 				MainSymbol: mainSymbol,
 				Imports:    importSymbols,
@@ -73,6 +81,8 @@ func main() {
 	// Flags
 	rootCmd.Flags().BoolVar(&enableComments, "comments", false, "Include debug comments in the output")
 	rootCmd.Flags().BoolVar(&enableTrace, "trace", false, "Prints out a trace of the PC")
+	rootCmd.Flags().BoolVar(&enableAccurate, "accurate", false, "Enable more accurate ISA modeling (float32 rounding, 32-bit overflow wrapping)")
+	rootCmd.Flags().IntVar(&memorySize, "memory", 2048, "Memory size in bytes for generated Luau RAM buffer")
 	rootCmd.Flags().StringVar(&mode, "mode", "main", "Mode to compile as: module, main, or bench")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "The output luau file.")
 	rootCmd.Flags().StringVarP(&mainSymbol, "symbol", "e", "main", "The main symbol to start automatically.")

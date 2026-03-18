@@ -32,7 +32,7 @@ luau main.luau
 
 ## Usage:
 ```bash
-reasm main.S -o main.luau --mode {module|main|bench} --trace --comments
+reasm main.S -o main.luau --mode {module|main|bench} --trace --comments --memory 2048 --accurate
 ```
 
 Input file can either be a `.S` assembly file, or a `.elf` file which is linked *(experimental)*.
@@ -40,6 +40,8 @@ Input file can either be a `.S` assembly file, or a `.elf` file which is linked 
 ### Options
 - `--comments`: This will place comments all around the generated code with details such as the instruction's purpose, operands, and any relevant debug information.
 - `--trace`: Everytime a jump happens it will log to output, this is a more extreme option and should only be used for debug.
+- `--accurate`: Enables more accurate ISA modeling. This turns on 32-bit overflow wrapping and float32 instruction rounding behavior. Much slower, but gives more accurate mathematics.
+- `--memory`: Sets generated RAM buffer size in bytes (default: `2048`).
 - `--mode`:
   * `module` will automatically expose memory, API to inject functions, and registers to whoever imports.
   * `main` will generate a simple Luau file which runs on its own.

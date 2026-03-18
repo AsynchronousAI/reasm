@@ -12,6 +12,8 @@ import (
 type Options struct {
 	Comments   bool
 	Trace      bool
+	Accurate   bool
+	Memory     int
 	Mode       string
 	MainSymbol string
 	Imports    []string

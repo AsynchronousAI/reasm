@@ -1,5 +1,7 @@
 package compiler
 
+import "strings"
+
 /** Memory */
 func fld(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = readf64(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
@@ -16,15 +18,31 @@ func fsw(w *OutputWriter, command AssemblyCommand) {
 
 /** Fused */
 func fmadd(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_fmadd(%s, %s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s * %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fmsub(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_fmsub(%s, %s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
+		return
+	}
 	WriteIndentedString(w, "%s = %s * %s - (%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fnmadd(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_fnmadd(%s, %s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
+		return
+	}
 	WriteIndentedString(w, "%s = -(%s) * %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fnmsub(w *OutputWriter, command AssemblyCommand) {
+	if strings.HasSuffix(command.Name, ".s") {
+		WriteIndentedString(w, "%s = f32_fnmsub(%s, %s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
+		return
+	}
 	WriteIndentedString(w, "%s = -(%s) * %s - (%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 
@@ -69,7 +87,7 @@ func fge(w *OutputWriter, command AssemblyCommand) {
 
 /** Conversion */
 func fcvt_d_s(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = f32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_w_s(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "do\n")
