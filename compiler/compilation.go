@@ -192,6 +192,8 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"fmv.s.x":   fmv_w_x,
 	"fmv.w.x":   fmv_w_x,
 	"fmv.x.w":   fmv_x_w,
+	"frflags":   frflags,
+	"fsflags":   fsflags,
 	"fcvt.w.s":  fcvt_w_s,
 	"fcvt.wu.s": fcvt_w_s,
 	"fcvt.s.w":  fcvt_s_w,

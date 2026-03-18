@@ -108,6 +108,23 @@ func fmv_w_x(w *OutputWriter, command AssemblyCommand) {
 func fmv_x_w(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = float_to_int(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
+func frflags(w *OutputWriter, command AssemblyCommand) {
+	WriteIndentedString(w, "%s = bit32.band(fflags, 0x1F)\n", CompileRegister(w, command.Arguments[0]))
+}
+func fsflags(w *OutputWriter, command AssemblyCommand) {
+	if len(command.Arguments) == 1 {
+		WriteIndentedString(w, "fflags = bit32.band(%s, 0x1F)\n", CompileRegister(w, command.Arguments[0]))
+		return
+	}
+
+	WriteIndentedString(w, "do\n")
+	w.Depth++
+	WriteIndentedString(w, "local oldFlags: number = bit32.band(fflags, 0x1F)\n")
+	WriteIndentedString(w, "fflags = bit32.band(%s, 0x1F)\n", CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = oldFlags\n", CompileRegister(w, command.Arguments[0]))
+	w.Depth--
+	WriteIndentedString(w, "end\n")
+}
 
 /** Classify */
 func fclass(w *OutputWriter, command AssemblyCommand) {

@@ -15,6 +15,7 @@ local r49: number, r50: number, r51: number, r52: number, r53: number, r54: numb
 local PC: number = 1 -- current position
 local mallocDepth: number = 0
 local stdout_cache: string = ""
+local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
 
 -- Utility
 --- 32-bit helpers
@@ -105,6 +106,7 @@ function reset_registers(): ()
     r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r3 = mem -- x2/sp starts at top of stack
+    fflags = 0
 end
 
 --- Strings
