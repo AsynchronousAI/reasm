@@ -19,7 +19,11 @@ local stdout_cache: string = ""
 -- Utility
 --- 32-bit helpers
 local function u32(v: number): number
-    return bit32.band(v, 0xFFFFFFFF)
+    local n = bit32.band(v, 0xFFFFFFFF)
+    if n < 0 then
+        return n + 0x100000000
+    end
+    return n
 end
 local function i32(v)
     local n = u32(v)
