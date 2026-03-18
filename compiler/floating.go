@@ -75,23 +75,11 @@ func fcvt_s_w(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = int_to_float(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_d_w(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Comments {
-
-		WriteIndentedString(w, "%s = int_to_float(%s) -- Double will just be a less precise float\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-
-	} else {
-		WriteIndentedString(w, "%s = int_to_float(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-	}
+	WriteIndentedString(w, "%s = i32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 
 func fcvt_d_wu(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Comments {
-
-		WriteIndentedString(w, "%s = int_to_float(u32(%s)) -- Double will just be a less precise float\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-
-	} else {
-		WriteIndentedString(w, "%s = int_to_float(u32(%s))\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-	}
+	WriteIndentedString(w, "%s = u32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_w_d(w *OutputWriter, command AssemblyCommand) {
 	if w.Options.Comments {
@@ -117,7 +105,7 @@ func fclass(w *OutputWriter, command AssemblyCommand) {
 
 /** Other */
 func fneg(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = -%s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	WriteIndentedString(w, "%s = -(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fabs(w *OutputWriter, command AssemblyCommand) {
 	WriteIndentedString(w, "%s = math.abs(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))

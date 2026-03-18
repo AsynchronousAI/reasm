@@ -109,6 +109,7 @@ function reset_registers(): ()
     r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    r3 = mem -- x2/sp starts at top of stack
 end
 
 --- Strings
@@ -131,24 +132,32 @@ function format_string(fmt: number, args: {number}): string
     local arg_index: number = 1
 
     return fmtString:gsub("%%([%d%.]*[dfseX])", function(spec)
-        local val = args[arg_index]
-        arg_index += 1
-
         if spec:sub(-1) == "d" then
+            local val = args[arg_index]
+            arg_index += 1
             return tostring(i32(val))
         elseif spec:sub(-1) == "X" then
+            local val = args[arg_index]
+            arg_index += 1
             return string.format("%X", u32(val))
         elseif spec:sub(-1) == "f" then
-            local low = args[arg_index]; arg_index+=1;
-            local high = args[arg_index]; arg_index+=1;
-            local float = two_words_to_double(high, math.abs(low))
+            if arg_index % 2 == 1 then
+                arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
+            end
+            local low = args[arg_index]; arg_index += 1
+            local high = args[arg_index]; arg_index += 1
+            local float = two_words_to_double(high, low)
             return string.format("%"..spec, float)
         elseif spec:sub(-1) == "s" then
+            local val = args[arg_index]
+            arg_index += 1
             return read_string(val)
         elseif spec:sub(-1) == "e" then
-            arg_index+=1 -- skip for alignment
-            local low = args[arg_index]; arg_index+=1;
-            local high = args[arg_index]; arg_index+=1;
+            if arg_index % 2 == 1 then
+                arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
+            end
+            local low = args[arg_index]; arg_index += 1
+            local high = args[arg_index]; arg_index += 1
             local float = two_words_to_double(high, low)
             return string.format("%"..spec, float)
         else
