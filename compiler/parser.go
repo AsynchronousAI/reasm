@@ -10,7 +10,7 @@ var offsetReg = regexp.MustCompile(`^(-?\d+)?\((\w+)\)$`)
 var modifierReg = regexp.MustCompile(`^%(hi|lo)\(([^)]+)\)(?:\((\w+)\))?$`)
 
 type Argument struct {
-	Offset       int8
+	Offset       int
 	Register     bool
 	Source       string
 	Modifier     string /* "lo", "hi", or "" */
@@ -107,7 +107,7 @@ func parseArguments(parts []string) []Argument {
 			arg.Source = matches[2]
 			if matches[1] != "" {
 				if val, err := strconv.Atoi(matches[1]); err == nil {
-					arg.Offset = int8(val)
+					arg.Offset = val
 				}
 			}
 		} else if isReg {
