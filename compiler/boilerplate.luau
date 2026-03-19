@@ -6,6 +6,7 @@
 -- API
 local mem: number = --{memory here} -- bytes of RAM
 local memory: buffer = buffer.create(mem) -- our memory!
+local temp: buffer = buffer.create(128) -- just used for reinterpreting
 local r1: number, r2: number, r3: number, r4: number, r5: number, r6: number, r7: number, r8: number, r9: number, r10: number, r11: number, r12: number, r13: number, r14: number, r15: number, r16: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 local r17: number, r18: number, r19: number, r20: number, r21: number, r22: number, r23: number, r24: number, r25: number, r26: number, r27: number, r28: number, r29: number, r30: number, r31: number, r32: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 local r33: number, r34: number, r35: number, r36: number, r37: number, r38: number, r39: number, r40: number, r41: number, r42: number, r43: number, r44: number, r45: number, r46: number, r47: number, r48: number = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -34,7 +35,8 @@ local function i32(v)
     return n
 end
 local function f32(v: number): number
-    return string.unpack("f", string.pack("f", v))
+    buffer.writef32(temp, 0, v)
+    return buffer.readf32(temp, 0)
 end
 
 --- Base (can be found in generated code)
@@ -47,20 +49,22 @@ local function idiv_trunc(a: number, b: number): number
     end
 end
 local function float_to_int(f: number): number
-    return string.unpack("i", string.pack("f", f))
+    buffer.writef32(temp, 0, f)
+    return buffer.readi32(temp, 0)
 end
 local function int_to_float(i: number): number
-    local packed = string.pack("I4", i)
-    return string.unpack("f", packed)
+    buffer.writei32(temp, 0, i)
+    return buffer.readf32(temp, 0)
 end
 local function float_to_double(f: number): number
-    local packed_f = string.pack("f", f)
-    local padded = packed_f .. ("\0\0\0\0")
-    return string.unpack("d", padded)
+    buffer.writef32(temp, 0, f)
+    buffer.writei32(temp, 4, 0)
+    return buffer.readf64(temp, 0)
 end
 local function two_words_to_double(highWord: number, lowWord: number): number
-    local packed = string.pack("<I4I4", u32(lowWord), u32(highWord))
-    return string.unpack("d", packed)
+    buffer.writei32(temp, 0, u32(lowWord))
+    buffer.writei32(temp, 4, u32(highWord))
+    return buffer.readf64(temp, 0)
 end
 local function hi(addr: number): number
     return bit32.lshift(bit32.rshift(addr, 12), 12)

@@ -2,7 +2,7 @@
 [Wiki](https://github.com/AsynchronousAI/reasm/wiki)
 > A **RISC-V IMFD + Zbb/Zbs** compatible assembler/disassembler to **Luau**. 
 >
-> **173+** supported instructions & directives!
+> **175+** supported instructions & directives!
 
 > [!NOTE]
 > Some programs, will not work! Create an issue if you find an assembly file which is compiling invalid.
