@@ -118,18 +118,14 @@ end
 
 --- Strings
 local function read_string(startPointer: number): string
-    -- read null terminated strings from memory
-    local pointer: number = startPointer
-    local str: string = ""
-    local byte: number = 0
-    repeat
-        byte = buffer.readbits(memory, pointer * 8, 8)
-        if byte == 0 then break end
-        str = str .. string.char(byte)
-        pointer = pointer + 1
-        if pointer >= mem then error("Exceeded buffer size when reading string.") end
-    until false
-    return str
+    local endPointer = startPointer
+    while endPointer < mem do
+        if buffer.readu8(memory, endPointer) == 0 then
+            return buffer.readstring(memory, startPointer, endPointer - startPointer)
+        end
+        endPointer += 1
+    end
+    error("Exceeded buffer size when reading string.")
 end
 function format_string(fmt: number, args: {number}): string
     local fmtString: string = read_string(fmt)
