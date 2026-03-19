@@ -2,10 +2,9 @@
 *.elf
 reasm
 .DS_Store
-main.luau
 bench
 sourcemap.json
 *.c
-main
+main.*
 platform.info
 profile.*

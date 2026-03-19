@@ -47,11 +47,9 @@ func ParseFromElf(f *elf.File) []AssemblyCommand {
 		return symtab[i].Value < symtab[j].Value
 	})
 
-	symStack := make([]elf.Symbol, len(symtab))
-	copy(symStack, symtab)
-
-	/* TODO: parse the actual data of the file  */
 	instructions := make([]AssemblyCommand, 0)
+
+	symIndex := 0
 	for i := 0; i < len(code); i += 4 {
 		inst, err := riscv64asm.Decode(code[i : i+4])
 		if err != nil {
@@ -59,13 +57,26 @@ func ParseFromElf(f *elf.File) []AssemblyCommand {
 			continue
 		}
 
-		/* any symbols to be added before this */
-		for _, sym := range symStack {
-			symStack = symStack[:len(symStack)-1] // pop
+		addr := text.Addr + uint64(i)
 
+		/* any symbols to be added before this */
+		for symIndex < len(symtab) && symtab[symIndex].Value < addr {
+			symIndex++
+		}
+		for symIndex < len(symtab) && symtab[symIndex].Value == addr {
 			instructions = append(instructions, AssemblyCommand{
 				Type:      Label,
-				Name:      sym.Name,
+				Name:      symtab[symIndex].Name,
+				Arguments: nil,
+			})
+			symIndex++
+		}
+
+		addrLabel := fmt.Sprintf("%d", addr)
+		if len(instructions) == 0 || instructions[len(instructions)-1].Name != addrLabel {
+			instructions = append(instructions, AssemblyCommand{
+				Type:      Label,
+				Name:      addrLabel,
 				Arguments: nil,
 			})
 		}

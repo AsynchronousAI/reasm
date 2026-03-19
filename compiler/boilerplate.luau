@@ -260,16 +260,12 @@ local functions = {
     end,
 }
 
+local syscalls: {[number]: () -> ()} = {}
+
 -- Extensions
 --{extentions here}
 
 -- Localized Functions
---- buffer
-local writei8, writei16, writei32 = buffer.writei8, buffer.writei16, buffer.writei32
-local readi8, readi16, readi32 = buffer.readi8, buffer.readi16, buffer.readi32
-local writeu8, writeu16, writeu32, writestring, fill = buffer.writeu8, buffer.writeu16, buffer.writeu32, buffer.writestring, buffer.fill
-local readu8, readu16, readu32, readf32, readf64, writef32, writef64 = buffer.readu8, buffer.readu16, buffer.readu32, buffer.readf32, buffer.readf64, buffer.writef32, buffer.writef64
-
 local FUNCS: {[number]: () -> boolean} = {}
 ---- Auto generated code starts here
 --{code here}
