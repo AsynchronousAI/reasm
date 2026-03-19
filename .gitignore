@@ -6,5 +6,6 @@ bench
 sourcemap.json
 *.c
 main.*
+!main.go
 platform.info
 profile.*
