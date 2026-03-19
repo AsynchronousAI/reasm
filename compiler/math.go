@@ -2,45 +2,58 @@ package compiler
 
 /* Math */
 func add(w *OutputWriter, command AssemblyCommand) { /* add & addi instructions */
-	expr := CompileRegister(w, command.Arguments[1]) + " + " + CompileRegister(w, command.Arguments[2])
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, irI32(w, IRBinop("+", lhs, rhs))))
 }
 func sub(w *OutputWriter, command AssemblyCommand) { /* sub & subi instructions */
-	expr := CompileRegister(w, command.Arguments[1]) + " - " + CompileRegister(w, command.Arguments[2])
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, irI32(w, IRBinop("-", lhs, rhs))))
 }
 func mul(w *OutputWriter, command AssemblyCommand) { /* mul & muli instructions */
-	expr := CompileRegister(w, command.Arguments[1]) + " * " + CompileRegister(w, command.Arguments[2])
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, irI32(w, IRBinop("*", lhs, rhs))))
 }
-func div(w *OutputWriter, command AssemblyCommand) { /* div & divi instructions */
-	lhs := CompileRegister(w, command.Arguments[1])
-	rhs := CompileRegister(w, command.Arguments[2])
+func div(w *OutputWriter, command AssemblyCommand) { /* div & divu instructions */
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
 	if command.Name == "divu" {
-		expr := "idiv_trunc(" + wrapU32Expr(w, lhs) + ", " + wrapU32Expr(w, rhs) + ")"
-		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, expr))
+		inner := IRCall(RT_IDIV_TRUNC, irU32(w, lhs), irU32(w, rhs))
+		Emit(w, IRStmtAssign(dst, irU32(w, inner)))
 	} else {
-		expr := "idiv_trunc(" + wrapI32Expr(w, lhs) + ", " + wrapI32Expr(w, rhs) + ")"
-		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+		inner := IRCall(RT_IDIV_TRUNC, irI32(w, lhs), irI32(w, rhs))
+		Emit(w, IRStmtAssign(dst, irI32(w, inner)))
 	}
 }
-func rem(w *OutputWriter, command AssemblyCommand) { /* rem & remi instructions */
-	lhs := CompileRegister(w, command.Arguments[1])
-	rhs := CompileRegister(w, command.Arguments[2])
+func rem(w *OutputWriter, command AssemblyCommand) { /* rem & remu instructions */
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
 	if command.Name == "remu" {
-		expr := wrapU32Expr(w, lhs) + " % " + wrapU32Expr(w, rhs)
-		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, expr))
+		Emit(w, IRStmtAssign(dst, irU32(w, IRBinop("%", irU32(w, lhs), irU32(w, rhs)))))
 	} else {
-		expr := wrapI32Expr(w, lhs) + " % " + wrapI32Expr(w, rhs)
-		WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+		Emit(w, IRStmtAssign(dst, irI32(w, IRBinop("%", irI32(w, lhs), irI32(w, rhs)))))
 	}
 }
 func neg(w *OutputWriter, command AssemblyCommand) { /* neg & negi instructions */
-	expr := "-" + wrapI32Expr(w, CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, expr))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, irI32(w, IRUnop("-", irI32(w, src)))))
 }
 
-/** Math Descendants */
+/** mulh — high 32 bits of 64-bit product */
 func mulh(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.band(bit32.lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst,
+		IRCall(BIT32_BAND,
+			IRCall(BIT32_LSHIFT, lhs, rhs),
+			IRLitHex(0xFFFFFFFF))))
 }

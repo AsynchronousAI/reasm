@@ -11,36 +11,6 @@ import (
 //go:embed boilerplate.luau
 var luau_boilerplate string
 
-/* Float arithmetic helpers to avoid integer wrapping */
-func fadd(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s + %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-		return
-	}
-	WriteIndentedString(w, "%s = %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-}
-func fsub(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s - %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-		return
-	}
-	WriteIndentedString(w, "%s = %s - %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-}
-func fmul(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s * %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-		return
-	}
-	WriteIndentedString(w, "%s = %s * %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-}
-func fdiv(w *OutputWriter, command AssemblyCommand) {
-	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s / %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-		return
-	}
-	WriteIndentedString(w, "%s = %s / %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
-}
-
 var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	/* bit shifts */
 	"sll":  sll,

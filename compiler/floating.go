@@ -4,159 +4,301 @@ import "strings"
 
 /** Memory */
 func fld(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readf64(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READF64, IRSymbol(SYM_MEMORY), addr)))
 }
 func flw(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readf32(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READF32, IRSymbol(SYM_MEMORY), addr)))
 }
 func fsd(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "writef64(memory, %s, %s)\n", CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[0]))
+	addr := irArgExpr(w, command.Arguments[1])
+	val  := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtCall(BUFFER_WRITEF64, IRSymbol(SYM_MEMORY), addr, val))
 }
 func fsw(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "writef32(memory, %s, %s)\n", CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[0]))
+	addr := irArgExpr(w, command.Arguments[1])
+	val  := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtCall(BUFFER_WRITEF32, IRSymbol(SYM_MEMORY), addr, val))
 }
 
-/** Fused */
+/** Fused multiply-add family */
 func fmadd(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	c   := irArgExpr(w, command.Arguments[3])
+	expr := IRBinop("+", IRBinop("*", a, b), c)
 	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s * %s + %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
-		return
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
 	}
-	WriteIndentedString(w, "%s = %s * %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fmsub(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	c   := irArgExpr(w, command.Arguments[3])
+	expr := IRBinop("-", IRBinop("*", a, b), c)
 	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(%s * %s - %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
-		return
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
 	}
-	WriteIndentedString(w, "%s = %s * %s - (%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fnmadd(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	c   := irArgExpr(w, command.Arguments[3])
+	// -(a*b) + c
+	expr := IRBinop("+", IRUnop("-", IRBinop("*", a, b)), c)
 	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(-(%s * %s) + %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
-		return
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
 	}
-	WriteIndentedString(w, "%s = -(%s) * %s + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 func fnmsub(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	c   := irArgExpr(w, command.Arguments[3])
+	// -(a*b) - c
+	expr := IRBinop("-", IRUnop("-", IRBinop("*", a, b)), c)
 	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
-		WriteIndentedString(w, "%s = f32(-(%s * %s) - %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
-		return
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
 	}
-	WriteIndentedString(w, "%s = -(%s) * %s - (%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]), CompileRegister(w, command.Arguments[3]))
 }
 
-/** Sign */
+/** Sign injection */
 func fsgnj(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.abs(%s) * math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	// math.abs(a) * math.sign(b)
+	Emit(w, IRStmtAssign(dst, IRBinop("*", IRCall(MATH_ABS, a), IRCall(MATH_SIGN, b))))
 }
 func fsgnjn(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.abs(%s) * -math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	// math.abs(a) * -math.sign(b)
+	Emit(w, IRStmtAssign(dst, IRBinop("*", IRCall(MATH_ABS, a), IRUnop("-", IRCall(MATH_SIGN, b)))))
 }
 func fsgnjx(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s * -math.sign(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	// a * -math.sign(b)
+	Emit(w, IRStmtAssign(dst, IRBinop("*", a, IRUnop("-", IRCall(MATH_SIGN, b)))))
 }
 
 /** Other math */
 func fsqrt(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.sqrt(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(MATH_SQRT, src)))
 }
 func fmin(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.min(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRCall(MATH_MIN, a, b)))
 }
 func fmax(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.max(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRCall(MATH_MAX, a, b)))
 }
 
 /** Comparators */
 func feq(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if %s == %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("==", a, b), IRLit(1), IRLit(0))))
 }
 func flt(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if %s < %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<", a, b), IRLit(1), IRLit(0))))
 }
 func fle(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if %s <= %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<=", a, b), IRLit(1), IRLit(0))))
 }
 func fgt(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if %s > %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop(">", a, b), IRLit(1), IRLit(0))))
 }
 func fge(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if %s >= %s then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop(">=", a, b), IRLit(1), IRLit(0))))
+}
+
+/** Float arithmetic — optional f32 rounding */
+func fadd(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	expr := IRBinop("+", a, b)
+	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
+	}
+}
+func fsub(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	expr := IRBinop("-", a, b)
+	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
+	}
+}
+func fmul(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	expr := IRBinop("*", a, b)
+	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
+	}
+}
+func fdiv(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	a   := irArgExpr(w, command.Arguments[1])
+	b   := irArgExpr(w, command.Arguments[2])
+	expr := IRBinop("/", a, b)
+	if w.Options.Accurate && strings.HasSuffix(command.Name, ".s") {
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, expr)))
+	} else {
+		Emit(w, IRStmtAssign(dst, expr))
+	}
 }
 
 /** Conversion */
 func fcvt_d_s(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
 	if w.Options.Accurate {
-		WriteIndentedString(w, "%s = f32(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-		return
+		Emit(w, IRStmtAssign(dst, IRCast(RT_F32, src)))
+	} else {
+		Emit(w, IRStmtAssign(dst, src))
 	}
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
 }
 func fcvt_w_s(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "do\n")
-	w.Depth++
-	WriteIndentedString(w, "local v: number = %s\n", CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = if v >= 0 then math.floor(v) else math.ceil(v)\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	// do local v = src; dst = if v>=0 then floor(v) else ceil(v); end
+	Emit(w, IRStmtDo([]*IRNode{
+		IRStmtLocal("v", "number", src),
+		IRStmtAssign(dst, IRIfExpr(
+			IRBinop(">=", IRSymbol("v"), IRLit(0)),
+			IRCall(MATH_FLOOR, IRSymbol("v")),
+			IRCall(MATH_CEIL, IRSymbol("v")),
+		)),
+	}))
 }
 func fcvt_s_w(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, CompileRegister(w, command.Arguments[1])))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, irI32(w, src)))
 }
 func fcvt_s_wu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, CompileRegister(w, command.Arguments[1])))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, irU32(w, src)))
 }
 func fcvt_d_w(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, CompileRegister(w, command.Arguments[1])))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, irI32(w, src)))
 }
-
 func fcvt_d_wu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, CompileRegister(w, command.Arguments[1])))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, irU32(w, src)))
 }
 func fcvt_w_d(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "do\n")
-	w.Depth++
-	WriteIndentedString(w, "local v: number = %s\n", CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = if v >= 0 then math.floor(v) else math.ceil(v)\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtDo([]*IRNode{
+		IRStmtLocal("v", "number", src),
+		IRStmtAssign(dst, IRIfExpr(
+			IRBinop(">=", IRSymbol("v"), IRLit(0)),
+			IRCall(MATH_FLOOR, IRSymbol("v")),
+			IRCall(MATH_CEIL, IRSymbol("v")),
+		)),
+	}))
 }
 
 /** Move */
 func fmv_w_x(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = int_to_float(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(RT_INT_TO_FLOAT, src)))
 }
 func fmv_x_w(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = float_to_int(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(RT_FLOAT_TO_INT, src)))
 }
+
+/** fflags */
 func frflags(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.band(fflags, 0x1F)\n", CompileRegister(w, command.Arguments[0]))
+	dst := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_BAND, IRSymbol(SYM_FFLAGS), IRLitHex(0x1F))))
 }
 func fsflags(w *OutputWriter, command AssemblyCommand) {
 	if len(command.Arguments) == 1 {
-		WriteIndentedString(w, "fflags = bit32.band(%s, 0x1F)\n", CompileRegister(w, command.Arguments[0]))
+		src := irArgExpr(w, command.Arguments[0])
+		Emit(w, IRStmtAssign(IRSymbol(SYM_FFLAGS), IRCall(BIT32_BAND, src, IRLitHex(0x1F))))
 		return
 	}
-
-	WriteIndentedString(w, "do\n")
-	w.Depth++
-	WriteIndentedString(w, "local oldFlags: number = bit32.band(fflags, 0x1F)\n")
-	WriteIndentedString(w, "fflags = bit32.band(%s, 0x1F)\n", CompileRegister(w, command.Arguments[1]))
-	WriteIndentedString(w, "%s = oldFlags\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtDo([]*IRNode{
+		IRStmtLocal("oldFlags", "number", IRCall(BIT32_BAND, IRSymbol(SYM_FFLAGS), IRLitHex(0x1F))),
+		IRStmtAssign(IRSymbol(SYM_FFLAGS), IRCall(BIT32_BAND, src, IRLitHex(0x1F))),
+		IRStmtAssign(dst, IRSymbol("oldFlags")),
+	}))
 }
 
 /** Classify */
 func fclass(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = fclass(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(RT_FCLASS, src)))
 }
 
 /** Other */
 func fneg(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = -(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRUnop("-", src)))
 }
 func fabs(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = math.abs(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(MATH_ABS, src)))
 }

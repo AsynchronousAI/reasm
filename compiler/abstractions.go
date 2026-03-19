@@ -3,76 +3,71 @@ package compiler
 import log "github.com/sirupsen/logrus"
 
 func ret(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if r2 ~= 0 then\n")
-	w.Depth++
-	//WriteIndentedString(w, "print('ret', RETURN)\n")
-	WriteIndentedString(w, "PC = r2\n")
+	r2 := IRSymbol(SYM_R2)
+	thenBody := []*IRNode{IRStmtSetPC(r2)}
 	if w.Options.Trace {
-		WriteIndentedString(w, "print('RET: ', PC)\n")
+		thenBody = append(thenBody, IRStmtCall("print", IRLit(`"RET: "`), IRSymbol(SYM_PC)))
 	}
-	WriteIndentedString(w, "r2 = 0\n")
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "else\n")
-	w.Depth++
-	WriteIndentedString(w, "PC = 0\n")
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	thenBody = append(thenBody,
+		IRStmtAssign(r2, IRLit(0)),
+		IRStmtReturn(true),
+	)
+	elseBody := []*IRNode{
+		IRStmtSetPC(IRLit(0)),
+		IRStmtReturn(true),
+	}
+	Emit(w, IRStmtIf(IRBinop("~=", r2, IRLit(0)), thenBody, elseBody))
 }
-func call(w *OutputWriter, command AssemblyCommand) {
-	var function = command.Arguments[0].Source
 
-	/* the actual jump */
+func call(w *OutputWriter, command AssemblyCommand) {
+	function := command.Arguments[0].Source
 	WriteIndentedString(w, "if functions[\"%s\"] then\n", function)
 	w.Depth++
 	WriteIndentedString(w, "functions[\"%s\"]()\n", function)
-	WriteIndentedString(w, "PC = %d\n", w.MaxPC)
+	Emit(w, IRStmtSetPC(IRLit(w.MaxPC)))
 	if w.Options.Trace {
-		WriteIndentedString(w, "print('CALL: ', PC)\n")
+		Emit(w, IRStmtCall("print", IRLit(`"CALL: "`), IRSymbol(SYM_PC)))
 	}
-	WriteIndentedString(w, "return true\n")
+	Emit(w, IRStmtReturn(true))
 	w.Depth--
 	WriteIndentedString(w, "else\n")
 	w.Depth++
 	JumpTo(w, function, true)
 	w.Depth--
 	WriteIndentedString(w, "end\n")
-
-	/* cut the jump */
 	CutAndLink(w)
 }
-func tail(w *OutputWriter, command AssemblyCommand) {
-	var function = command.Arguments[0].Source
 
-	/* tail-call: jump without link */
+func tail(w *OutputWriter, command AssemblyCommand) {
+	function := command.Arguments[0].Source
+	// tail-call: jump without saving a return address
 	WriteIndentedString(w, "if functions[\"%s\"] then\n", function)
 	w.Depth++
 	WriteIndentedString(w, "functions[\"%s\"]()\n", function)
-	WriteIndentedString(w, "if r2 ~= 0 then\n")
-	w.Depth++
-	WriteIndentedString(w, "PC = r2\n")
-	WriteIndentedString(w, "r2 = 0\n")
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "else\n")
-	w.Depth++
-	WriteIndentedString(w, "PC = 0\n")
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	r2 := IRSymbol(SYM_R2)
+	thenBody := []*IRNode{
+		IRStmtSetPC(r2),
+		IRStmtAssign(r2, IRLit(0)),
+		IRStmtReturn(true),
+	}
+	elseBody := []*IRNode{
+		IRStmtSetPC(IRLit(0)),
+		IRStmtReturn(true),
+	}
+	Emit(w, IRStmtIf(IRBinop("~=", r2, IRLit(0)), thenBody, elseBody))
 	w.Depth--
 	WriteIndentedString(w, "else\n")
 	w.Depth++
 	JumpTo(w, function, false)
 	w.Depth--
 	WriteIndentedString(w, "end\n")
-
-	/* cut the jump */
 	CutAndLink(w)
 }
+
 func move(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, src))
 }
 
 /* unimplemented */
@@ -87,6 +82,6 @@ func fence(w *OutputWriter, command AssemblyCommand) {
 }
 func nop(w *OutputWriter, command AssemblyCommand) {
 	if w.Options.Comments {
-		WriteIndentedString(w, "-- nop\n")
+		Emit(w, IRStmtComment("nop"))
 	}
 }

@@ -2,34 +2,54 @@ package compiler
 
 /** Save Memory */
 func sw(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "writei32(memory, %s, %s)\n", CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[0]))
+	addr := irArgExpr(w, command.Arguments[1])
+	val  := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), addr, val))
 }
 func sh(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "writei16(memory, %s, %s)\n", CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[0]))
+	addr := irArgExpr(w, command.Arguments[1])
+	val  := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtCall(BUFFER_WRITEI16, IRSymbol(SYM_MEMORY), addr, val))
 }
 func sb(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "writei8(memory, %s, %s)\n", CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[0]))
+	addr := irArgExpr(w, command.Arguments[1])
+	val  := irArgExpr(w, command.Arguments[0])
+	Emit(w, IRStmtCall(BUFFER_WRITEI8, IRSymbol(SYM_MEMORY), addr, val))
 }
 
 /** Load Memory */
 func li(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, src))
 }
 func lui(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.lshift(%s, 12)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_LSHIFT, src, IRLit(12))))
 }
 func lw(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readi32(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READI32, IRSymbol(SYM_MEMORY), addr)))
 }
 func lb(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readi8(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READI8, IRSymbol(SYM_MEMORY), addr)))
 }
 func lh(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readi16(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READI16, IRSymbol(SYM_MEMORY), addr)))
 }
 func lhu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readu16(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READU16, IRSymbol(SYM_MEMORY), addr)))
 }
 func lbu(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = readu8(memory, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst  := irArgExpr(w, command.Arguments[0])
+	addr := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BUFFER_READU8, IRSymbol(SYM_MEMORY), addr)))
 }

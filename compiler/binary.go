@@ -2,48 +2,80 @@ package compiler
 
 /** Binary Shifts */
 func sll(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.band(bit32.lshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst,
+		IRCall(BIT32_BAND, IRCall(BIT32_LSHIFT, lhs, rhs), IRLitHex(0xFFFFFFFF))))
 }
 func srl(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.band(bit32.rshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst,
+		IRCall(BIT32_BAND, IRCall(BIT32_RSHIFT, lhs, rhs), IRLitHex(0xFFFFFFFF))))
 }
 func sra(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.band(bit32.arshift(%s, %s), 0xFFFFFFFF)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst,
+		IRCall(BIT32_BAND, IRCall(BIT32_ARSHIFT, lhs, rhs), IRLitHex(0xFFFFFFFF))))
 }
 
-/* Comparision */
-func slt(w *OutputWriter, command AssemblyCommand) { /* sltu & sltui instructions */
-	lhs := CompileRegister(w, command.Arguments[1])
-	rhs := CompileRegister(w, command.Arguments[2])
+/* Comparison */
+func slt(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
 	if command.Name == "sltu" || command.Name == "sltiu" {
-		WriteIndentedString(w, "%s = if (%s < %s) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
+		Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<", irU32(w, lhs), irU32(w, rhs)), IRLit(1), IRLit(0))))
 	} else {
-		WriteIndentedString(w, "%s = if (%s < %s) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
+		Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<", irI32(w, lhs), irI32(w, rhs)), IRLit(1), IRLit(0))))
 	}
 }
 func seqz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if (%s == 0) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("==", src, IRLit(0)), IRLit(1), IRLit(0))))
 }
 func snez(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if (%s ~= 0) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("~=", src, IRLit(0)), IRLit(1), IRLit(0))))
 }
 func sltz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if (%s < 0) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<", src, IRLit(0)), IRLit(1), IRLit(0))))
 }
 func sgtz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = if (%s > 0) then 1 else 0\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop(">", src, IRLit(0)), IRLit(1), IRLit(0))))
 }
 
 /** Binary Operations */
-func and(w *OutputWriter, command AssemblyCommand) { /* and & andi instructions */
-	WriteIndentedString(w, "%s = bit32.band(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+func and(w *OutputWriter, command AssemblyCommand) { /* and & andi */
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_BAND, lhs, rhs)))
 }
-func xor(w *OutputWriter, command AssemblyCommand) { /* xor & xori instructions */
-	WriteIndentedString(w, "%s = bit32.bxor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+func xor(w *OutputWriter, command AssemblyCommand) { /* xor & xori */
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_BXOR, lhs, rhs)))
 }
-func or(w *OutputWriter, command AssemblyCommand) { /* or & ori instructions */
-	WriteIndentedString(w, "%s = bit32.bor(%s, %s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]), CompileRegister(w, command.Arguments[2]))
+func or(w *OutputWriter, command AssemblyCommand) { /* or & ori */
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_BOR, lhs, rhs)))
 }
 func not(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = bit32.bnot(%s)\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRCall(BIT32_BNOT, src)))
 }

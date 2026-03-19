@@ -1,37 +1,35 @@
 package compiler
 
 /** Jump */
-func jump(w *OutputWriter, command AssemblyCommand) { /* j instructions */
+func jump(w *OutputWriter, command AssemblyCommand) {
 	JumpTo(w, command.Arguments[0].Source, false)
 }
-func jal(w *OutputWriter, command AssemblyCommand) { /* jal instructions */
+func jal(w *OutputWriter, command AssemblyCommand) {
 	JumpTo(w, command.Arguments[0].Source, true)
 	CutAndLink(w)
 }
 func jalr(w *OutputWriter, command AssemblyCommand) {
-	returnAddress := CompileRegister(w, command.Arguments[0])
+	returnReg := irArgExpr(w, command.Arguments[0])
 
-	sourceRegister := returnAddress
+	sourceExpr := returnReg
 	if len(command.Arguments) > 1 {
-		CompileRegister(w, command.Arguments[1])
+		sourceExpr = irArgExpr(w, command.Arguments[1])
 	}
-	var offset string = "0"
+	offsetExpr := IRLit(0)
 	if len(command.Arguments) > 2 {
-		offset = CompileRegister(w, command.Arguments[2])
+		offsetExpr = irArgExpr(w, command.Arguments[2])
 	}
 
-	WriteIndentedString(w, "do\n") // wrap with a do so luau does not complain if any code is after the continue
-	w.Depth++
-	WriteIndentedString(w, "%s = PC\n", returnAddress)
-	WriteIndentedString(w, "PC = %s + %s\n", sourceRegister, offset)
-
+	body := []*IRNode{
+		IRStmtAssign(returnReg, IRSymbol(SYM_PC)),
+		IRStmtSetPC(IRBinop("+", sourceExpr, offsetExpr)),
+	}
 	if w.Options.Trace {
-		WriteIndentedString(w, "print('JALR: ', PC)\n")
+		body = append(body, IRStmtCall("print", IRLit(`"JALR: "`), IRSymbol(SYM_PC)))
 	}
+	body = append(body, IRStmtReturn(true))
 
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	Emit(w, IRStmtDo(body))
 	AddEnd(w)
 	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
 	w.Depth++
@@ -39,128 +37,102 @@ func jalr(w *OutputWriter, command AssemblyCommand) {
 	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)
 }
 func jr(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "do\n") // wrap with a do so luau does not complain if any code is after the continue
-	w.Depth++
-	WriteIndentedString(w, "PC = %s\n", CompileRegister(w, command.Arguments[0]))
+	src := irArgExpr(w, command.Arguments[0])
+	body := []*IRNode{IRStmtSetPC(src)}
 	if w.Options.Trace {
-		WriteIndentedString(w, "print('JR: ', PC)\n")
+		body = append(body, IRStmtCall("print", IRLit(`"JR: "`), IRSymbol(SYM_PC)))
 	}
-	WriteIndentedString(w, "return true\n")
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	body = append(body, IRStmtReturn(true))
+	Emit(w, IRStmtDo(body))
 }
 
-/** Branching */
+/** Branching helpers */
+func irBranch(w *OutputWriter, cond *IRNode, label string) {
+	JumpToIR(w, cond, label)
+}
+
 func blt(w *OutputWriter, command AssemblyCommand) {
-	lhs := CompileRegister(w, command.Arguments[0])
-	rhs := CompileRegister(w, command.Arguments[1])
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	var cond *IRNode
 	if command.Name == "bltu" {
-		WriteIndentedString(w, "if %s < %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
+		cond = IRBinop("<", irU32(w, lhs), irU32(w, rhs))
 	} else {
-		WriteIndentedString(w, "if %s < %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
+		cond = IRBinop("<", irI32(w, lhs), irI32(w, rhs))
 	}
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	irBranch(w, cond, command.Arguments[2].Source)
 }
 func bnez(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s ~= 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop("~=", src, IRLit(0)), command.Arguments[1].Source)
 }
 func bne(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s ~= %s then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	irBranch(w, IRBinop("~=", lhs, rhs), command.Arguments[2].Source)
 }
 func bge(w *OutputWriter, command AssemblyCommand) {
-	lhs := CompileRegister(w, command.Arguments[0])
-	rhs := CompileRegister(w, command.Arguments[1])
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	var cond *IRNode
 	if command.Name == "bgeu" {
-		WriteIndentedString(w, "if %s >= %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
+		cond = IRBinop(">=", irU32(w, lhs), irU32(w, rhs))
 	} else {
-		WriteIndentedString(w, "if %s >= %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
+		cond = IRBinop(">=", irI32(w, lhs), irI32(w, rhs))
 	}
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	irBranch(w, cond, command.Arguments[2].Source)
 }
 func beqz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s == 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop("==", src, IRLit(0)), command.Arguments[1].Source)
 }
 func beq(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s == %s then\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	irBranch(w, IRBinop("==", lhs, rhs), command.Arguments[2].Source)
 }
 func bgt(w *OutputWriter, command AssemblyCommand) {
-	lhs := CompileRegister(w, command.Arguments[0])
-	rhs := CompileRegister(w, command.Arguments[1])
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	var cond *IRNode
 	if command.Name == "bgtu" {
-		WriteIndentedString(w, "if %s > %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
+		cond = IRBinop(">", irU32(w, lhs), irU32(w, rhs))
 	} else {
-		WriteIndentedString(w, "if %s > %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
+		cond = IRBinop(">", irI32(w, lhs), irI32(w, rhs))
 	}
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	irBranch(w, cond, command.Arguments[2].Source)
 }
 func ble(w *OutputWriter, command AssemblyCommand) {
-	lhs := CompileRegister(w, command.Arguments[0])
-	rhs := CompileRegister(w, command.Arguments[1])
+	lhs := irArgExpr(w, command.Arguments[0])
+	rhs := irArgExpr(w, command.Arguments[1])
+	var cond *IRNode
 	if command.Name == "bleu" {
-		WriteIndentedString(w, "if %s <= %s then\n", wrapU32Expr(w, lhs), wrapU32Expr(w, rhs))
+		cond = IRBinop("<=", irU32(w, lhs), irU32(w, rhs))
 	} else {
-		WriteIndentedString(w, "if %s <= %s then\n", wrapI32Expr(w, lhs), wrapI32Expr(w, rhs))
+		cond = IRBinop("<=", irI32(w, lhs), irI32(w, rhs))
 	}
-	w.Depth++
-	JumpTo(w, command.Arguments[2].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	irBranch(w, cond, command.Arguments[2].Source)
 }
 func bltz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s < 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop("<", src, IRLit(0)), command.Arguments[1].Source)
 }
 func bgtz(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s > 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop(">", src, IRLit(0)), command.Arguments[1].Source)
 }
 func blez(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s <= 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop("<=", src, IRLit(0)), command.Arguments[1].Source)
 }
 func bgez(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "if %s >= 0 then\n", CompileRegister(w, command.Arguments[0]))
-	w.Depth++
-	JumpTo(w, command.Arguments[1].Source, false)
-	w.Depth--
-	WriteIndentedString(w, "end\n")
+	src := irArgExpr(w, command.Arguments[0])
+	irBranch(w, IRBinop(">=", src, IRLit(0)), command.Arguments[1].Source)
 }
 
 /* AUIPC */
 func auipc(w *OutputWriter, command AssemblyCommand) {
-	WriteIndentedString(w, "%s = PC + %s\n", CompileRegister(w, command.Arguments[0]), CompileRegister(w, command.Arguments[1]))
+	dst := irArgExpr(w, command.Arguments[0])
+	src := irArgExpr(w, command.Arguments[1])
+	Emit(w, IRStmtAssign(dst, IRBinop("+", IRSymbol(SYM_PC), src)))
 }

@@ -340,3 +340,38 @@ func IsLabelEmpty(writer *OutputWriter, label string) bool {
 
 	return false
 }
+
+// ---------------------------------------------------------------------------
+// IR integration helpers
+// ---------------------------------------------------------------------------
+
+// irArgExpr converts an Argument to an *IRNode expression, applying the same
+// logic as CompileRegister but returning structured IR instead of a string.
+func irArgExpr(w *OutputWriter, arg Argument) *IRNode {
+	compiled := CompileRegister(w, arg)
+	// CompileRegister already handles all the symbol/register/offset/modifier
+	// resolution and returns a Luau expression string.  We lift it into a
+	// raw literal IR node so the emitter outputs it verbatim.
+	return &IRNode{Kind: IRExprLit, Op: compiled}
+}
+
+// JumpToIR emits a conditional branch (if cond then PC=addr; return true end).
+func JumpToIR(w *OutputWriter, cond *IRNode, label string) {
+	address := FindLabelAddress(w, label)
+	if address == -1 {
+		Emit(w, IRStmtError("No bindings for function '"+label+"'"))
+		return
+	}
+	var pcStmt *IRNode
+	if w.Options.Comments {
+		pcStmt = IRStmtAssignComment(IRSymbol(SYM_PC), IRLit(address), label)
+	} else {
+		pcStmt = IRStmtSetPC(IRLit(address))
+	}
+	body := []*IRNode{pcStmt}
+	if w.Options.Trace {
+		body = append(body, IRStmtCall("print", IRLit(`"JUMP: "`), IRSymbol(SYM_PC)))
+	}
+	body = append(body, IRStmtReturn(true))
+	Emit(w, IRStmtIf(cond, body, nil))
+}

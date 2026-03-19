@@ -17,8 +17,7 @@ func label(w *OutputWriter, command AssemblyCommand) {
 		return
 	}
 
-	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s\n", w.MaxPC, command.Name)
-	w.Depth++
+	Emit(w, IRStmtFuncBegin(w.MaxPC, command.Name))
 	w.MaxPC++
 }
 
@@ -44,11 +43,15 @@ func asciz(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeString
 
 	dataWithNull := append([]byte(data), 0)
-	WriteIndentedString(w, "writestring(memory, %d, %s)\n", w.MemoryDevelopmentPointer, luauStringExpression(string(dataWithNull)))
+	Emit(w, IRStmtCall(BUFFER_WRITESTR,
+		IRSymbol(SYM_MEMORY),
+		IRLit(w.MemoryDevelopmentPointer),
+		IRRawExpr(luauStringExpression(string(dataWithNull)))))
 
 	save_pointer(w)
 	w.MemoryDevelopmentPointer += int32(len(dataWithNull))
 }
+
 func base64data(w *OutputWriter, components []string) {
 	if len(components) < 2 {
 		return
@@ -61,12 +64,16 @@ func base64data(w *OutputWriter, components []string) {
 
 	save_pointer(w)
 	for i, b := range decoded {
-		WriteIndentedString(w, "writeu8(memory, %d, %d)\n", int(w.MemoryDevelopmentPointer)+i, int(b))
+		Emit(w, IRStmtCall(BUFFER_WRITEU8,
+			IRSymbol(SYM_MEMORY),
+			IRLit(int(w.MemoryDevelopmentPointer)+i),
+			IRLit(int(b))))
 	}
 
 	w.MemoryDevelopmentPointer += int32(len(decoded))
 	w.PendingData.Type = PendingDataTypeString
 }
+
 func quad(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
@@ -75,11 +82,13 @@ func quad(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeNumeric
 
 	val, _ := strconv.ParseInt(components[1], 0, 0)
-	WriteIndentedString(w, "writei32(memory, %d, %d)\n", w.MemoryDevelopmentPointer, val&0xFFFFFFFF)
-	WriteIndentedString(w, "writei32(memory, %d, %d)\n", w.MemoryDevelopmentPointer+4, val>>32)
-
+	Emit(w,
+		IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val&0xFFFFFFFF)),
+		IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer+4), IRLit(val>>32)),
+	)
 	w.MemoryDevelopmentPointer += 8
 }
+
 func word(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
@@ -88,10 +97,10 @@ func word(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeNumeric
 
 	val, _ := strconv.ParseInt(components[1], 0, 0)
-	WriteIndentedString(w, "writei32(memory, %d, %d)\n", w.MemoryDevelopmentPointer, val)
-
+	Emit(w, IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
 	w.MemoryDevelopmentPointer += 4
 }
+
 func half(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
@@ -100,10 +109,10 @@ func half(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeNumeric
 
 	val, _ := strconv.ParseInt(components[1], 0, 0)
-	WriteIndentedString(w, "writei16(memory, %d, %d)\n", w.MemoryDevelopmentPointer, val)
-
+	Emit(w, IRStmtCall(BUFFER_WRITEI16, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
 	w.MemoryDevelopmentPointer += 2
 }
+
 func byte_(w *OutputWriter, components []string) { /* byte_ to avoid overlap with the type */
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
@@ -112,17 +121,18 @@ func byte_(w *OutputWriter, components []string) { /* byte_ to avoid overlap wit
 	w.PendingData.Type = PendingDataTypeNumeric
 
 	val, _ := strconv.ParseInt(components[1], 0, 0)
-	WriteIndentedString(w, "writei16(memory, %d, %d)\n", w.MemoryDevelopmentPointer, val)
-
+	// NOTE: original code used writei16 for .byte — preserved intentionally
+	Emit(w, IRStmtCall(BUFFER_WRITEI16, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
 	w.MemoryDevelopmentPointer += 1
 }
+
 func zero(w *OutputWriter, components []string) {
 	size, _ := strconv.ParseInt(components[1], 0, 0)
 	save_pointer(w)
-	WriteIndentedString(w, "fill(memory, %d, 0, %d)\n", w.MemoryDevelopmentPointer, size)
-
+	Emit(w, IRStmtCall(BUFFER_FILL, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(0), IRLit(size)))
 	w.MemoryDevelopmentPointer += int32(size)
 }
+
 func set(w *OutputWriter, components []string) {
-	save_pointer_at(w, components[1], w.MemoryDevelopmentPointer) /* todo: support offsetted .set directives */
+	save_pointer_at(w, components[1], w.MemoryDevelopmentPointer)
 }
