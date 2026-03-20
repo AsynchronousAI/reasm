@@ -28,6 +28,13 @@ type OutputWriter struct {
 	IRNodes                  []*IRNode
 	MemoryMap                map[string]int /* map static data keys to addresses */
 	Options                  Options        /* user specified options */
+	InlineCounter            int
+}
+
+func (w *OutputWriter) nextInlineTemp() string {
+	name := fmt.Sprintf("__inline%d", w.InlineCounter)
+	w.InlineCounter++
+	return name
 }
 
 func WriteString(writer *OutputWriter, format string, args ...any) {

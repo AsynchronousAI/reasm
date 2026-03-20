@@ -143,6 +143,109 @@ type IRNode struct {
 	BoolVal  bool      // used by IRReturn
 }
 
+type exprResult struct {
+	expr  string
+	stmts []string
+}
+
+type inlineHelper struct {
+	arity  int
+	expand func(*OutputWriter, string, []string) []string
+}
+
+var inlineHelpers = map[string]inlineHelper{
+	RT_U32: {1, func(_ *OutputWriter, target string, args []string) []string {
+		return []string{
+			fmt.Sprintf("local %s = ((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", target, args[0]),
+		}
+	}},
+	RT_I32: {1, func(w *OutputWriter, target string, args []string) []string {
+		partial := w.nextInlineTemp()
+		return []string{
+			fmt.Sprintf("local %s = ((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", partial, args[0]),
+			fmt.Sprintf("local %s = (%s >= 0x80000000) and (%s - 0x100000000) or %s", target, partial, partial, partial),
+		}
+	}},
+	RT_F32: {1, func(_ *OutputWriter, target string, args []string) []string {
+		return []string{
+			fmt.Sprintf("buffer.writef32(temp, 0, %s)", args[0]),
+			fmt.Sprintf("local %s = buffer.readf32(temp, 0)", target),
+		}
+	}},
+	RT_INT_TO_FLOAT: {1, func(_ *OutputWriter, target string, args []string) []string {
+		return []string{
+			fmt.Sprintf("buffer.writei32(temp, 0, %s)", args[0]),
+			fmt.Sprintf("local %s = buffer.readf32(temp, 0)", target),
+		}
+	}},
+	RT_FLOAT_TO_INT: {1, func(_ *OutputWriter, target string, args []string) []string {
+		return []string{
+			fmt.Sprintf("buffer.writef32(temp, 0, %s)", args[0]),
+			fmt.Sprintf("local %s = buffer.readi32(temp, 0)", target),
+		}
+	}},
+	RT_IDIV_TRUNC: {2, func(w *OutputWriter, target string, args []string) []string {
+		aVar := w.nextInlineTemp()
+		bVar := w.nextInlineTemp()
+		return []string{
+			fmt.Sprintf("local %s = %s", aVar, args[0]),
+			fmt.Sprintf("local %s = %s", bVar, args[1]),
+			fmt.Sprintf("local %s", target),
+			fmt.Sprintf("if %s == 0 then error(\"division by zero\") end", bVar),
+			fmt.Sprintf("if %s >= 0 then", aVar),
+			fmt.Sprintf("\t%s = (%s - (%s %% %s)) // %s", target, aVar, aVar, bVar, bVar),
+			"else",
+			fmt.Sprintf("\t%s = -((-%s) - ((-%s) %% %s)) // %s", target, aVar, aVar, bVar, bVar),
+			"end",
+		}
+	}},
+	RT_FCLASS: {1, func(w *OutputWriter, target string, args []string) []string {
+		xVar := w.nextInlineTemp()
+		return []string{
+			fmt.Sprintf("local %s = %s", xVar, args[0]),
+			fmt.Sprintf("local %s = 0", target),
+			fmt.Sprintf("if %s ~= %s then", xVar, xVar),
+			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 9)) -- qNaN (cannot distinguish sNaN in Luau)", target, target),
+			fmt.Sprintf("elseif %s == math.huge then", xVar),
+			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 7)) -- +Inf", target, target),
+			fmt.Sprintf("elseif %s == -math.huge then", xVar),
+			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 0)) -- -Inf", target, target),
+			fmt.Sprintf("elseif %s == 0 then", xVar),
+			fmt.Sprintf("\tif 1/%s == -math.huge then", xVar),
+			fmt.Sprintf("\t\t%s = bit32.bor(%s, bit32.lshift(1, 3)) -- -Zero", target, target),
+			"\telse",
+			fmt.Sprintf("\t\t%s = bit32.bor(%s, bit32.lshift(1, 4)) -- +Zero", target, target),
+			"\tend",
+			"else",
+			fmt.Sprintf("\tlocal absx = math.abs(%s)", xVar),
+			"\tlocal min_normal = 2.2250738585072014e-308 -- 2^-1022",
+			fmt.Sprintf("\tif absx < min_normal then"),
+			fmt.Sprintf("\t\tif %s > 0 then", xVar),
+			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 5)) -- +Subnormal", target, target),
+			"\t\telse",
+			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 2)) -- -Subnormal", target, target),
+			"\t\tend",
+			fmt.Sprintf("\telse"),
+			fmt.Sprintf("\t\tif %s > 0 then", xVar),
+			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 6)) -- +Normal", target, target),
+			"\t\telse",
+			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 1)) -- -Normal", target, target),
+			"\t\tend",
+			fmt.Sprintf("\tend"),
+			"end",
+		}
+	}},
+}
+
+func expandInlineHelper(w *OutputWriter, op string, args []string) (exprResult, bool) {
+	if helper, ok := inlineHelpers[op]; ok && len(args) == helper.arity {
+		name := w.nextInlineTemp()
+		stmts := helper.expand(w, name, args)
+		return exprResult{expr: name, stmts: stmts}, true
+	}
+	return exprResult{}, false
+}
+
 func (k IRKind) String() string {
 	idx := int(k)
 	if idx >= 0 && idx < len(irKindNames) {
@@ -273,31 +376,89 @@ func IRStmtCall(fn string, args ...*IRNode) *IRNode {
 	return &IRNode{Kind: IRFuncCall, Op: fn, Operands: args}
 }
 
-func emitExpr(n *IRNode) string {
+func appendStmts(dst []string, src []string) []string {
+	if len(src) == 0 {
+		return dst
+	}
+	result := make([]string, 0, len(dst)+len(src))
+	result = append(result, dst...)
+	result = append(result, src...)
+	return result
+}
+
+func flushExprStmts(w *OutputWriter, stmts []string) {
+	for _, stmt := range stmts {
+		WriteIndentedString(w, "%s\n", stmt)
+	}
+}
+
+func emitExpr(w *OutputWriter, n *IRNode) exprResult {
 	switch n.Kind {
 	case IRExprReg, IRExprSym, IRExprLit:
-		return n.Op
+		return exprResult{expr: n.Op}
 	case IRExprCall:
+		stmts := make([]string, 0)
 		args := make([]string, len(n.Operands))
-		for i, a := range n.Operands {
-			args[i] = emitExpr(a)
+		for i, operand := range n.Operands {
+			sub := emitExpr(w, operand)
+			stmts = appendStmts(stmts, sub.stmts)
+			args[i] = sub.expr
 		}
-		return fmt.Sprintf("%s(%s)", n.Op, strings.Join(args, ", "))
+		if inline, ok := expandInlineHelper(w, n.Op, args); ok {
+			inline.stmts = appendStmts(stmts, inline.stmts)
+			return inline
+		}
+		return exprResult{
+			expr:  fmt.Sprintf("%s(%s)", n.Op, strings.Join(args, ", ")),
+			stmts: stmts,
+		}
 	case IRExprBinop:
-		return fmt.Sprintf("%s %s %s", emitExpr(n.Operands[0]), n.Op, emitExpr(n.Operands[1]))
+		lhs := emitExpr(w, n.Operands[0])
+		rhs := emitExpr(w, n.Operands[1])
+		return exprResult{
+			expr:  fmt.Sprintf("%s %s %s", lhs.expr, n.Op, rhs.expr),
+			stmts: appendStmts(lhs.stmts, rhs.stmts),
+		}
 	case IRExprUnop:
-		return fmt.Sprintf("%s(%s)", n.Op, emitExpr(n.Operands[0]))
+		operand := emitExpr(w, n.Operands[0])
+		return exprResult{
+			expr:  fmt.Sprintf("%s(%s)", n.Op, operand.expr),
+			stmts: operand.stmts,
+		}
 	case IRExprIfExpr:
-		return fmt.Sprintf("if %s then %s else %s",
-			emitExpr(n.Operands[0]), emitExpr(n.Operands[1]), emitExpr(n.Operands[2]))
+		cond := emitExpr(w, n.Operands[0])
+		thenExpr := emitExpr(w, n.Operands[1])
+		elseExpr := emitExpr(w, n.Operands[2])
+		stmts := appendStmts(cond.stmts, appendStmts(thenExpr.stmts, elseExpr.stmts))
+		return exprResult{
+			expr:  fmt.Sprintf("if %s then %s else %s", cond.expr, thenExpr.expr, elseExpr.expr),
+			stmts: stmts,
+		}
 	case IRExprCast:
-		return fmt.Sprintf("%s(%s)", n.Op, emitExpr(n.Operands[0]))
+		operand := emitExpr(w, n.Operands[0])
+		if inline, ok := expandInlineHelper(w, n.Op, []string{operand.expr}); ok {
+			inline.stmts = appendStmts(operand.stmts, inline.stmts)
+			return inline
+		}
+		return exprResult{
+			expr:  fmt.Sprintf("%s(%s)", n.Op, operand.expr),
+			stmts: operand.stmts,
+		}
 	case IRExprIndex:
-		return fmt.Sprintf("%s[%s]", emitExpr(n.Operands[0]), emitExpr(n.Operands[1]))
+		lhs := emitExpr(w, n.Operands[0])
+		rhs := emitExpr(w, n.Operands[1])
+		return exprResult{
+			expr:  fmt.Sprintf("%s[%s]", lhs.expr, rhs.expr),
+			stmts: appendStmts(lhs.stmts, rhs.stmts),
+		}
 	case IRExprField:
-		return fmt.Sprintf("%s.%s", emitExpr(n.Operands[0]), n.Op)
+		base := emitExpr(w, n.Operands[0])
+		return exprResult{
+			expr:  fmt.Sprintf("%s.%s", base.expr, n.Op),
+			stmts: base.stmts,
+		}
 	default:
-		return "<expr?>"
+		return exprResult{expr: "<expr?>"}
 	}
 }
 
@@ -309,20 +470,23 @@ func emitIRStatements(w *OutputWriter, nodes []*IRNode) {
 func emitStmt(w *OutputWriter, n *IRNode) {
 	switch n.Kind {
 	case IRAssign:
-		dst := emitExpr(n.Operands[0])
-		src := emitExpr(n.Operands[1])
+		dst := emitExpr(w, n.Operands[0])
+		src := emitExpr(w, n.Operands[1])
+		flushExprStmts(w, dst.stmts)
+		flushExprStmts(w, src.stmts)
 		if n.Comment != "" {
-			WriteIndentedString(w, "%s = %s -- %s\n", dst, src, n.Comment)
+			WriteIndentedString(w, "%s = %s -- %s\n", dst.expr, src.expr, n.Comment)
 		} else {
-			WriteIndentedString(w, "%s = %s\n", dst, src)
+			WriteIndentedString(w, "%s = %s\n", dst.expr, src.expr)
 		}
 
 	case IRSetPC:
-		expr := emitExpr(n.Operands[0])
+		expr := emitExpr(w, n.Operands[0])
+		flushExprStmts(w, expr.stmts)
 		if n.Comment != "" {
-			WriteIndentedString(w, "PC = %s -- %s\n", expr, n.Comment)
+			WriteIndentedString(w, "PC = %s -- %s\n", expr.expr, n.Comment)
 		} else {
-			WriteIndentedString(w, "PC = %s\n", expr)
+			WriteIndentedString(w, "PC = %s\n", expr.expr)
 		}
 
 	case IRReturn:
@@ -342,19 +506,25 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		WriteIndentedString(w, "error(%q)\n", n.Op)
 
 	case IRFuncCall:
-		args := make([]string, len(n.Operands))
-		for i, a := range n.Operands {
-			args[i] = emitExpr(a)
+		args := make([]exprResult, len(n.Operands))
+		for i, operand := range n.Operands {
+			args[i] = emitExpr(w, operand)
+			flushExprStmts(w, args[i].stmts)
 		}
-		WriteIndentedString(w, "%s(%s)\n", n.Op, strings.Join(args, ", "))
+		argExprs := make([]string, len(args))
+		for i, arg := range args {
+			argExprs[i] = arg.expr
+		}
+		WriteIndentedString(w, "%s(%s)\n", n.Op, strings.Join(argExprs, ", "))
 
 	case IRLocalDecl:
-		expr := emitExpr(n.Operands[0])
+		expr := emitExpr(w, n.Operands[0])
 		typ := n.Comment // reused field
+		flushExprStmts(w, expr.stmts)
 		if typ != "" {
-			WriteIndentedString(w, "local %s: %s = %s\n", n.Op, typ, expr)
+			WriteIndentedString(w, "local %s: %s = %s\n", n.Op, typ, expr.expr)
 		} else {
-			WriteIndentedString(w, "local %s = %s\n", n.Op, expr)
+			WriteIndentedString(w, "local %s = %s\n", n.Op, expr.expr)
 		}
 
 	case IRPCInc:
@@ -373,8 +543,9 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		}
 
 	case IRIf:
-		cond := emitExpr(n.Operands[0])
-		WriteIndentedString(w, "if %s then\n", cond)
+		cond := emitExpr(w, n.Operands[0])
+		flushExprStmts(w, cond.stmts)
+		WriteIndentedString(w, "if %s then\n", cond.expr)
 		w.Depth++
 		emitIRStatements(w, n.Body)
 		w.Depth--
@@ -394,17 +565,20 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		WriteIndentedString(w, "end\n")
 
 	case IRWhile:
-		cond := emitExpr(n.Operands[0])
-		WriteIndentedString(w, "while %s do\n", cond)
+		cond := emitExpr(w, n.Operands[0])
+		flushExprStmts(w, cond.stmts)
+		WriteIndentedString(w, "while %s do\n", cond.expr)
 		w.Depth++
 		emitIRStatements(w, n.Body)
 		w.Depth--
 		WriteIndentedString(w, "end\n")
 
 	case IRForNum:
-		start := emitExpr(n.Operands[0])
-		limit := emitExpr(n.Operands[1])
-		WriteIndentedString(w, "for %s = %s, %s do\n", n.Op, start, limit)
+		start := emitExpr(w, n.Operands[0])
+		limit := emitExpr(w, n.Operands[1])
+		flushExprStmts(w, start.stmts)
+		flushExprStmts(w, limit.stmts)
+		WriteIndentedString(w, "for %s = %s, %s do\n", n.Op, start.expr, limit.expr)
 		w.Depth++
 		emitIRStatements(w, n.Body)
 		w.Depth--

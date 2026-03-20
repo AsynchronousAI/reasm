@@ -19,93 +19,11 @@ local stdout_cache: string = ""
 local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
 
 -- Utility
---- 32-bit helpers
-local function u32(v: number): number
-    local n = math.floor(v % 0x100000000)
-    if n < 0 then
-        n += 0x100000000
-    end
-    return n
-end
-local function i32(v)
-    local n = u32(v)
-    if n >= 0x80000000 then
-        return n - 0x100000000
-    end
-    return n
-end
-local function f32(v: number): number
-    buffer.writef32(temp, 0, v)
-    return buffer.readf32(temp, 0)
-end
-
 --- Base (can be found in generated code)
-local function idiv_trunc(a: number, b: number): number
-    if b == 0 then error("division by zero") end
-    if a >= 0 then
-        return (a - (a % b)) // b
-    else
-        return -((-a) - ((-a) % b)) // b
-    end
-end
-local function float_to_int(f: number): number
-    buffer.writef32(temp, 0, f)
-    return buffer.readi32(temp, 0)
-end
-local function int_to_float(i: number): number
-    buffer.writei32(temp, 0, i)
-    return buffer.readf32(temp, 0)
-end
-local function float_to_double(f: number): number
-    buffer.writef32(temp, 0, f)
-    buffer.writei32(temp, 4, 0)
-    return buffer.readf64(temp, 0)
-end
 local function two_words_to_double(highWord: number, lowWord: number): number
-    buffer.writei32(temp, 0, u32(lowWord))
-    buffer.writei32(temp, 4, u32(highWord))
+    buffer.writei32(temp, 0, ((math.floor(lowWord % 0x100000000) + 0x100000000) % 0x100000000))
+    buffer.writei32(temp, 4, ((math.floor(highWord % 0x100000000) + 0x100000000) % 0x100000000))
     return buffer.readf64(temp, 0)
-end
-local function hi(addr: number): number
-    return bit32.lshift(bit32.rshift(addr, 12), 12)
-end
-local function lo(addr: number): number
-    return bit32.band(addr, 0xFFF)
-end
-function fclass(x: number): number
-    local result = 0
-
-    if x ~= x then
-        result = bit32.bor(result, bit32.lshift(1, 9)) -- qNaN (cannot distinguish sNaN in Luau)
-    elseif x == math.huge then
-        result = bit32.bor(result, bit32.lshift(1, 7)) -- +Inf
-    elseif x == -math.huge then
-        result = bit32.bor(result, bit32.lshift(1, 0)) -- -Inf
-    elseif x == 0 then
-        if 1/x == -math.huge then
-            result = bit32.bor(result, bit32.lshift(1, 3)) -- -Zero
-        else
-            result = bit32.bor(result, bit32.lshift(1, 4)) -- +Zero
-        end
-    else
-        local absx = math.abs(x)
-        local min_normal = 2.2250738585072014e-308 -- 2^-1022
-        if absx < min_normal then
-            if x > 0 then
-                result = bit32.bor(result, bit32.lshift(1, 5)) -- +Subnormal
-            else
-                result = bit32.bor(result, bit32.lshift(1, 2)) -- -Subnormal
-            end
-        else
-            if x > 0 then
-                result = bit32.bor(result, bit32.lshift(1, 6)) -- +Normal
-            else
-                result = bit32.bor(result, bit32.lshift(1, 1)) -- -Normal
-            end
-        end
-    end
-
-    return result
 end
 function reset_registers(): ()
     r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -136,11 +54,13 @@ function format_string(fmt: number, args: {number}): string
         if spec:sub(-1) == "d" then
             local val = args[arg_index]
             arg_index += 1
-            return string.format("%"..fmtSpec, i32(val))
+
+           	local n = --[[u32]] ((math.floor(val % 0x100000000) + 0x100000000) % 0x100000000);
+            return string.format("%"..fmtSpec, --[[i32]] (n >= 0x80000000) and (n - 0x100000000) or n)
         elseif spec:sub(-1) == "X" then
             local val = args[arg_index]
             arg_index += 1
-            return string.format("%"..fmtSpec, u32(val))
+            return string.format("%"..fmtSpec, --[[u32]]((math.floor(val % 0x100000000) + 0x100000000) % 0x100000000))
         elseif spec:sub(-1) == "f" then
             if arg_index % 2 == 1 then
                 arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
