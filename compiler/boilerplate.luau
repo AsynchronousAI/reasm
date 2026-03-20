@@ -88,12 +88,6 @@ function format_string(fmt: number, args: {number}): string
 end
 
 
---- Memory
-local function malloc(size: number): number
-    mallocDepth+=size
-    return buffer.len(memory)-mallocDepth
-end
-
 --- Args
 local function get_args(): (number, number, number, number, number, number, number, number)
     return r11, r12, r13, r14, r15, r16, r17, r18
@@ -129,56 +123,14 @@ local function flush_stdout()
         stdout_cache = ""
     end
 end
+local function malloc(size: number): number
+    mallocDepth += size
+    return buffer.len(memory) - mallocDepth
+end
 
 
 -- Functions
-local functions = {
-    ["memcpy"] = function()
-        local dest,src,count = get_args()
-
-        buffer.copy(memory, dest, memory, src, count)
-    end,
-    ["memset"] = function()
-        local dest, value, count = get_args()
-        buffer.fill(memory, dest, bit32.band(value, 0xFF), count)
-    end,
-    ["malloc"] = function()
-        local size = get_args()
-        local dest = malloc(size)
-
-        push_args(dest)
-    end,
-    ["putchar"] = function()
-        local c = get_args()
-        local char = string.char(c)
-        if char == "\n" then
-            flush_stdout()
-        else
-            stdout_cache = stdout_cache .. char
-        end
-    end,
-    ["puts"] = function()
-        local fmt = get_args()
-        local str = read_string(fmt)
-        stdout_cache = stdout_cache .. str
-        flush_stdout()
-    end,
-    ["printf"] = function()
-        local args = {get_args()}
-        local fmt_ptr = args[1]
-        table.remove(args, 1)
-
-        local formatted = format_string(fmt_ptr, args)
-        for i = 1, #formatted do
-            local ch = formatted:sub(i,i)
-            if ch == "\n" then
-                flush_stdout()
-            else
-                stdout_cache = stdout_cache .. ch
-            end
-        end
-    end,
-}
+local functions = {}
 
 local syscalls: {[number]: () -> ()} = {}
 
