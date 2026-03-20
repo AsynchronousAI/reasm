@@ -30,7 +30,7 @@ func generateExtensions(writer *OutputWriter) string {
 		}
 	}
 
-	if !includesMath {
+	if includesMath {
 		sb.WriteString(math_extension)
 		sb.WriteString("\n")
 	}
