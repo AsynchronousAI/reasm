@@ -69,16 +69,26 @@ func move(w *OutputWriter, command AssemblyCommand) {
 	src := irArgExpr(w, command.Arguments[1])
 	Emit(w, IRStmtAssign(dst, src))
 }
+func ecall(w *OutputWriter, command AssemblyCommand) {
+	a7 := regVarName(baseRegs["x17"])
+	WriteIndentedString(w, "local syscall_fn = syscalls[%s]\n", a7)
+	WriteIndentedString(w, "if syscall_fn then\n")
+	w.Depth++
+	WriteIndentedString(w, "syscall_fn()\n")
+	w.Depth--
+	WriteIndentedString(w, "else\n")
+	w.Depth++
+	WriteIndentedString(w, "error(\"Undefined syscall: \" .. tostring(%s))\n", a7)
+	w.Depth--
+	WriteIndentedString(w, "end\n")
+}
 
 /* unimplemented */
 func ebreak(w *OutputWriter, command AssemblyCommand) {
-	log.Warn("EBREAK cannot be used (yet).")
-}
-func ecall(w *OutputWriter, command AssemblyCommand) {
-	log.Warn("ECALL cannot be used (yet).")
+	log.Warn("Breakpoints are unsupported")
 }
 func fence(w *OutputWriter, command AssemblyCommand) {
-	log.Warn("FENCE cannot be used.")
+	log.Warn("Fences are unsupported")
 }
 func nop(w *OutputWriter, command AssemblyCommand) {
 	if w.Options.Comments {

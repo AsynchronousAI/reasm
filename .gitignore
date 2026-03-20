@@ -2,10 +2,10 @@
 *.elf
 reasm
 .DS_Store
-main.luau
 bench
 sourcemap.json
 *.c
-main
+main.*
+!main.go
 platform.info
 profile.*
