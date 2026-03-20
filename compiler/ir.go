@@ -1,8 +1,11 @@
 package compiler
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // ---------------------------------------------------------------------------
@@ -39,6 +42,35 @@ const (
 	IRExprIndex  // table[key]
 	IRExprField  // table.field
 )
+
+var irKindNames = [...]string{
+	"IRAssign",
+	"IRIf",
+	"IRDo",
+	"IRReturn",
+	"IRSetPC",
+	"IRSetReg",
+	"IRComment",
+	"IRRaw",
+	"IRFuncBegin",
+	"IRFuncEnd",
+	"IRLocalDecl",
+	"IRWhile",
+	"IRForNum",
+	"IRPCInc",
+	"IRError",
+	"IRFuncCall",
+	"IRExprReg",
+	"IRExprLit",
+	"IRExprSym",
+	"IRExprBinop",
+	"IRExprUnop",
+	"IRExprCall",
+	"IRExprIfExpr",
+	"IRExprCast",
+	"IRExprIndex",
+	"IRExprField",
+}
 
 const (
 	BIT32_BAND    = "bit32.band"
@@ -109,6 +141,18 @@ type IRNode struct {
 	Comment  string    // inline comment
 	IntVal   int       // used by IRFuncBegin, IRReturn (0=false,1=true), IRPCInc
 	BoolVal  bool      // used by IRReturn
+}
+
+func (k IRKind) String() string {
+	idx := int(k)
+	if idx >= 0 && idx < len(irKindNames) {
+		return irKindNames[idx]
+	}
+	return fmt.Sprintf("IRKind(%d)", k)
+}
+
+func (k IRKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.String())
 }
 
 // ---------------------------------------------------------------------------
@@ -257,14 +301,11 @@ func emitExpr(n *IRNode) string {
 	}
 }
 
-// EmitIR renders a slice of IR statement nodes into the OutputWriter buffer.
-func EmitIR(w *OutputWriter, nodes []*IRNode) {
+func emitIRStatements(w *OutputWriter, nodes []*IRNode) {
 	for _, n := range nodes {
 		emitStmt(w, n)
 	}
 }
-
-// emitStmt renders a single statement node.
 func emitStmt(w *OutputWriter, n *IRNode) {
 	switch n.Kind {
 	case IRAssign:
@@ -335,12 +376,12 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		cond := emitExpr(n.Operands[0])
 		WriteIndentedString(w, "if %s then\n", cond)
 		w.Depth++
-		EmitIR(w, n.Body)
+		emitIRStatements(w, n.Body)
 		w.Depth--
 		if len(n.Else) > 0 {
 			WriteIndentedString(w, "else\n")
 			w.Depth++
-			EmitIR(w, n.Else)
+			emitIRStatements(w, n.Else)
 			w.Depth--
 		}
 		WriteIndentedString(w, "end\n")
@@ -348,7 +389,7 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 	case IRDo:
 		WriteIndentedString(w, "do\n")
 		w.Depth++
-		EmitIR(w, n.Body)
+		emitIRStatements(w, n.Body)
 		w.Depth--
 		WriteIndentedString(w, "end\n")
 
@@ -356,7 +397,7 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		cond := emitExpr(n.Operands[0])
 		WriteIndentedString(w, "while %s do\n", cond)
 		w.Depth++
-		EmitIR(w, n.Body)
+		emitIRStatements(w, n.Body)
 		w.Depth--
 		WriteIndentedString(w, "end\n")
 
@@ -365,7 +406,7 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		limit := emitExpr(n.Operands[1])
 		WriteIndentedString(w, "for %s = %s, %s do\n", n.Op, start, limit)
 		w.Depth++
-		EmitIR(w, n.Body)
+		emitIRStatements(w, n.Body)
 		w.Depth--
 		WriteIndentedString(w, "end\n")
 
@@ -373,9 +414,22 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 		WriteIndentedString(w, "-- [unknown IR kind %d]\n", n.Kind)
 	}
 }
-
 func Emit(w *OutputWriter, nodes ...*IRNode) {
-	for _, n := range nodes {
-		emitStmt(w, n)
+	if len(nodes) == 0 {
+		return
 	}
+	w.IRNodes = append(w.IRNodes, nodes...)
+	emitIRStatements(w, nodes)
+}
+func dumpIRAsJSON(w *OutputWriter) {
+	if len(w.IRNodes) == 0 {
+		log.Debug("IR dump requested but no nodes recorded")
+		return
+	}
+	data, err := json.MarshalIndent(w.IRNodes, "", "  ")
+	if err != nil {
+		log.WithError(err).Error("failed to marshal IR nodes for logging")
+		return
+	}
+	log.Debugf("IR JSON dump:\n%s", data)
 }

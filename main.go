@@ -19,6 +19,7 @@ func main() {
 	var outputFile string
 	var mainSymbol string
 	var importSymbols []string // <- multiple imports
+	var logIR bool
 
 	log.SetFormatter(&log.TextFormatter{
 		ForceColors:   true, // force color output
@@ -65,6 +66,7 @@ func main() {
 				Mode:       modeLower,
 				MainSymbol: mainSymbol,
 				Imports:    importSymbols,
+				LogIR:      logIR,
 			})
 
 			/* write output file */
@@ -87,6 +89,7 @@ func main() {
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "The output luau file.")
 	rootCmd.Flags().StringVarP(&mainSymbol, "symbol", "e", "main", "The main symbol to start automatically.")
 	rootCmd.Flags().StringArrayVarP(&importSymbols, "import", "I", []string{}, "Import symbol(s), can be repeated (example: -Imath -Ios)")
+	rootCmd.Flags().BoolVar(&logIR, "log-ir", false, "Log generated IR as JSON (requires debug log level)")
 	rootCmd.MarkFlagRequired("o")
 
 	rootCmd.Execute()
