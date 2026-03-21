@@ -108,6 +108,8 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"snez":  snez,
 	"sgtz":  sgtz,
 	"sltz":  sltz,
+	"sgt":   sgt,
+	"sgtu":  sgt,
 
 	/* F extension */
 	"fclass.s": fclass,
