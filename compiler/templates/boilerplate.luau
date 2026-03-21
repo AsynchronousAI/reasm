@@ -16,6 +16,7 @@ local r49: number, r50: number, r51: number, r52: number, r53: number, r54: numb
 local PC: number = 1 -- current position
 local mallocDepth: number = 0
 local stdout_cache: string = ""
+local errno: number = 0
 local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
 
 -- Utility

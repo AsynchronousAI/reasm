@@ -144,7 +144,7 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 			if literal, ok := resolveModifierLiteral(argument.Modifier, memoryAddress); ok {
 				compiled = fmt.Sprintf("%d", literal)
 			} else {
-				compiled = fmt.Sprintf("%s(%s)", argument.Modifier, inner)
+				compiled = applyModifierExpression(argument.Modifier, inner)
 			}
 			if argument.BaseRegister != "" {
 				baseNum := baseRegs[argument.BaseRegister]
@@ -180,7 +180,7 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 
 	/** Modifier (source was not in MemoryMap — leave as symbol name) */
 	if argument.Modifier != "" {
-		compiled = fmt.Sprintf("%s(%s)", argument.Modifier, compiled)
+		compiled = applyModifierExpression(argument.Modifier, compiled)
 	}
 
 	/** Base Register for %lo(sym)(reg) */
@@ -198,13 +198,29 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 }
 
 func resolveModifierLiteral(modifier string, address int) (int, bool) {
+	value := uint32(address)
 	switch modifier {
 	case "hi":
-		return address &^ 0xFFF, true
+		return int((value + 0x800) >> 12), true
 	case "lo":
-		return address & 0xFFF, true
+		raw := int32((value + 0x800) & 0xFFF)
+		if raw >= 0x800 {
+			raw -= 0x1000
+		}
+		return int(raw), true
 	default:
 		return 0, false
+	}
+}
+
+func applyModifierExpression(modifier, expr string) string {
+	switch modifier {
+	case "hi":
+		return fmt.Sprintf("bit32.rshift(bit32.band((%s) + 0x800, 0xFFFFFFFF), 12)", expr)
+	case "lo":
+		return fmt.Sprintf("bit32.band((%s) + 0x800, 0xFFF) - 0x800", expr)
+	default:
+		return fmt.Sprintf("%s(%s)", modifier, expr)
 	}
 }
 

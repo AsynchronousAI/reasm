@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//go:embed boilerplate.luau
+//go:embed templates/boilerplate.luau
 var luau_boilerplate string
 
 var instructions = map[string]func(*OutputWriter, AssemblyCommand){
