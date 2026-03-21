@@ -20,15 +20,19 @@ type Options struct {
 	LogIR      bool
 }
 
+func countInstructionTotal(commands []AssemblyCommand) int {
+	total := 0
+	for _, cmd := range commands {
+		if cmd.Type == Instruction && cmd.Name != "" {
+			total++
+		}
+	}
+	return total
+}
+
 func Compile(executable *os.File, options Options) []byte {
 	/* prepare */
-	var writer = &OutputWriter{
-		Buffer:                   []byte(""),
-		MemoryDevelopmentPointer: 0,
-		MaxPC:                    1,
-		Options:                  options,
-		MemoryMap:                make(map[string]int),
-	}
+	writer := newOutputWriter(options)
 
 	elf, err := elf.NewFile(executable)
 	if err != nil {
@@ -46,11 +50,18 @@ func Compile(executable *os.File, options Options) []byte {
 		writer.Commands = ParseFromElf(elf)
 	}
 
+	writer.InstructionTotal = countInstructionTotal(writer.Commands)
+
 	/* compilation */
 	BeforeCompilation(writer)
 	for _, command := range writer.Commands {
 		CompileInstruction(writer, command)
+		if command.Type == Instruction && command.Name != "" {
+			writer.InstructionProcessed++
+		}
+		writer.updateProgress()
 	}
+	writer.finishProgress()
 	if writer.Options.LogIR {
 		dumpIRAsJSON(writer)
 	}
