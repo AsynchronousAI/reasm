@@ -108,6 +108,8 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"snez":  snez,
 	"sgtz":  sgtz,
 	"sltz":  sltz,
+	"sgt":   sgt,
+	"sgtu":  sgt,
 
 	/* F extension */
 	"fclass.s": fclass,
@@ -351,6 +353,7 @@ func AfterCompilation(writer *OutputWriter) []byte {
 	if writer.Options.Mode == "main" {
 		WriteString(writer, "init()\nstart(%d)\n", main)
 	} else if writer.Options.Mode == "module" {
+		WriteString(writer, "init()\n")
 		WriteString(writer, `return setmetatable({
 	init = init,
 	memory = memory,

@@ -29,6 +29,18 @@ type OutputWriter struct {
 	MemoryMap                map[string]int /* map static data keys to addresses */
 	Options                  Options        /* user specified options */
 	InlineCounter            int
+	InstructionTotal         int
+	InstructionProcessed     int
+}
+
+func newOutputWriter(options Options) *OutputWriter {
+	return &OutputWriter{
+		Buffer:                   []byte(""),
+		MemoryDevelopmentPointer: 0,
+		MaxPC:                    1,
+		Options:                  options,
+		MemoryMap:                make(map[string]int),
+	}
 }
 
 func (w *OutputWriter) nextInlineTemp() string {
@@ -43,4 +55,18 @@ func WriteString(writer *OutputWriter, format string, args ...any) {
 func WriteIndentedString(writer *OutputWriter, format string, args ...any) {
 	indent := strings.Repeat("\t", writer.Depth)
 	writer.Buffer = append(writer.Buffer, indent+fmt.Sprintf(format, args...)...)
+}
+
+func (w *OutputWriter) updateProgress() {
+	if w.InstructionTotal == 0 {
+		return
+	}
+	fmt.Printf("\rInstruction %d/%d", w.InstructionProcessed, w.InstructionTotal)
+}
+
+func (w *OutputWriter) finishProgress() {
+	if w.InstructionTotal == 0 {
+		return
+	}
+	fmt.Print("\n")
 }

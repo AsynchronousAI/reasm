@@ -34,6 +34,16 @@ func slt(w *OutputWriter, command AssemblyCommand) {
 		Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop("<", irI32(w, lhs), irI32(w, rhs)), IRLit(1), IRLit(0))))
 	}
 }
+func sgt(w *OutputWriter, command AssemblyCommand) {
+	dst := irArgExpr(w, command.Arguments[0])
+	lhs := irArgExpr(w, command.Arguments[1])
+	rhs := irArgExpr(w, command.Arguments[2])
+	if command.Name == "sgtu" {
+		Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop(">", irU32(w, lhs), irU32(w, rhs)), IRLit(1), IRLit(0))))
+	} else {
+		Emit(w, IRStmtAssign(dst, IRIfExpr(IRBinop(">", irI32(w, lhs), irI32(w, rhs)), IRLit(1), IRLit(0))))
+	}
+}
 func seqz(w *OutputWriter, command AssemblyCommand) {
 	dst := irArgExpr(w, command.Arguments[0])
 	src := irArgExpr(w, command.Arguments[1])
