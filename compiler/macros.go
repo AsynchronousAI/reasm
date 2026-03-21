@@ -17,6 +17,8 @@ func label(w *OutputWriter, command AssemblyCommand) {
 		return
 	}
 
+	w.MemoryMap[command.Name] = w.MaxPC
+
 	Emit(w, IRStmtFuncBegin(w.MaxPC, command.Name))
 	w.MaxPC++
 }
