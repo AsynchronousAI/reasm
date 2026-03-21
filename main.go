@@ -57,6 +57,11 @@ func main() {
 			}
 			defer file.Close()
 
+			imports := append([]string{}, importSymbols...)
+			if !slices.Contains(imports, "stdlib") {
+				imports = append(imports, "stdlib")
+			}
+
 			/* compile with options */
 			processed := compiler.Compile(file, compiler.Options{
 				Comments:   enableComments,
@@ -65,7 +70,7 @@ func main() {
 				Memory:     memorySize,
 				Mode:       modeLower,
 				MainSymbol: mainSymbol,
-				Imports:    importSymbols,
+				Imports:    imports,
 				LogIR:      logIR,
 			})
 

@@ -26,6 +26,12 @@ func li(w *OutputWriter, command AssemblyCommand) {
 func lui(w *OutputWriter, command AssemblyCommand) {
 	dst := irArgExpr(w, command.Arguments[0])
 	src := irArgExpr(w, command.Arguments[1])
+	if command.Arguments[1].Modifier == "hi" {
+		if _, ok := resolveSymbolAddress(w, command.Arguments[1].Source); ok {
+			Emit(w, IRStmtAssign(dst, src))
+			return
+		}
+	}
 	Emit(w, IRStmtAssign(dst, IRCall(BIT32_LSHIFT, src, IRLit(12))))
 }
 func lw(w *OutputWriter, command AssemblyCommand) {
