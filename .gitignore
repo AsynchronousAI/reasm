@@ -4,7 +4,6 @@ reasm
 .DS_Store
 bench
 sourcemap.json
-*.c
 main.*
 !main.go
 platform.info

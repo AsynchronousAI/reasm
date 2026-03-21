@@ -17,6 +17,7 @@ type Options struct {
 	Mode       string
 	MainSymbol string
 	Imports    []string
+	LogIR      bool
 }
 
 func Compile(executable *os.File, options Options) []byte {
@@ -49,6 +50,9 @@ func Compile(executable *os.File, options Options) []byte {
 	BeforeCompilation(writer)
 	for _, command := range writer.Commands {
 		CompileInstruction(writer, command)
+	}
+	if writer.Options.LogIR {
+		dumpIRAsJSON(writer)
 	}
 	return AfterCompilation(writer)
 }

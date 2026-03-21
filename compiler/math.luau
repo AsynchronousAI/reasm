@@ -1,4 +1,4 @@
---- Math
+--- <math.h> helpers
 local function trunc(x: number): number
     return x > 0 and math.floor(x) or math.ceil(x)
 end
