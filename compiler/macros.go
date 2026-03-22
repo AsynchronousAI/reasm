@@ -23,13 +23,6 @@ func label(w *OutputWriter, command AssemblyCommand) {
 	w.MaxPC++
 }
 
-func save_pointer_at(w *OutputWriter, what string, where int32) {
-	w.MemoryMap[what] = int(where)
-}
-func save_pointer(w *OutputWriter) {
-	save_pointer_at(w, w.CurrentLabel.Name, w.MemoryDevelopmentPointer)
-}
-
 func asciz(w *OutputWriter, components []string) {
 	if len(components) < 2 {
 		return
@@ -50,7 +43,6 @@ func asciz(w *OutputWriter, components []string) {
 		IRLit(w.MemoryDevelopmentPointer),
 		IRRawExpr(luauStringExpression(string(dataWithNull)))))
 
-	save_pointer(w)
 	w.MemoryDevelopmentPointer += int32(len(dataWithNull))
 }
 
@@ -64,7 +56,6 @@ func base64data(w *OutputWriter, components []string) {
 		return
 	}
 
-	save_pointer(w)
 	for i, b := range decoded {
 		Emit(w, IRStmtCall(BUFFER_WRITEU8,
 			IRSymbol(SYM_MEMORY),
@@ -79,11 +70,17 @@ func base64data(w *OutputWriter, components []string) {
 func quad(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
-		save_pointer(w)
 	}
 	w.PendingData.Type = PendingDataTypeNumeric
 
-	val, _ := strconv.ParseInt(components[1], 0, 0)
+	val, err := strconv.ParseInt(components[1], 0, 64)
+	if err != nil {
+		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+			val = int64(addr)
+		} else {
+			log.Errorf("failed to parse or resolve .quad value %q", components[1])
+		}
+	}
 	Emit(w,
 		IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val&0xFFFFFFFF)),
 		IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer+4), IRLit(val>>32)),
@@ -94,11 +91,17 @@ func quad(w *OutputWriter, components []string) {
 func word(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
-		save_pointer(w)
 	}
 	w.PendingData.Type = PendingDataTypeNumeric
 
-	val, _ := strconv.ParseInt(components[1], 0, 0)
+	val, err := strconv.ParseInt(components[1], 0, 64)
+	if err != nil {
+		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+			val = int64(addr)
+		} else {
+			log.Errorf("failed to parse or resolve .word value %q", components[1])
+		}
+	}
 	Emit(w, IRStmtCall(BUFFER_WRITEI32, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
 	w.MemoryDevelopmentPointer += 4
 }
@@ -106,11 +109,17 @@ func word(w *OutputWriter, components []string) {
 func half(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
-		save_pointer(w)
 	}
 	w.PendingData.Type = PendingDataTypeNumeric
 
-	val, _ := strconv.ParseInt(components[1], 0, 0)
+	val, err := strconv.ParseInt(components[1], 0, 64)
+	if err != nil {
+		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+			val = int64(addr)
+		} else {
+			log.Errorf("failed to parse or resolve .half value %q", components[1])
+		}
+	}
 	Emit(w, IRStmtCall(BUFFER_WRITEI16, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
 	w.MemoryDevelopmentPointer += 2
 }
@@ -118,23 +127,31 @@ func half(w *OutputWriter, components []string) {
 func byte_(w *OutputWriter, components []string) { /* byte_ to avoid overlap with the type */
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))
-		save_pointer(w)
 	}
 	w.PendingData.Type = PendingDataTypeNumeric
 
 	val, _ := strconv.ParseInt(components[1], 0, 0)
-	// NOTE: original code used writei16 for .byte — preserved intentionally
-	Emit(w, IRStmtCall(BUFFER_WRITEI16, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val)))
+	Emit(w, IRStmtCall(BUFFER_WRITEU8, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(val&0xFF)))
 	w.MemoryDevelopmentPointer += 1
 }
 
 func zero(w *OutputWriter, components []string) {
 	size, _ := strconv.ParseInt(components[1], 0, 0)
-	save_pointer(w)
 	Emit(w, IRStmtCall(BUFFER_FILL, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(0), IRLit(size)))
 	w.MemoryDevelopmentPointer += int32(size)
 }
 
+func align(w *OutputWriter, components []string) {
+	pow, _ := strconv.Atoi(components[1])
+	alignSize := int32(1 << pow)
+	rem := w.MemoryDevelopmentPointer % alignSize
+	if rem != 0 {
+		pad := alignSize - rem
+		Emit(w, IRStmtCall(BUFFER_FILL, IRSymbol(SYM_MEMORY), IRLit(w.MemoryDevelopmentPointer), IRLit(0), IRLit(pad)))
+		w.MemoryDevelopmentPointer += pad
+	}
+}
+
 func set(w *OutputWriter, components []string) {
-	save_pointer_at(w, components[1], w.MemoryDevelopmentPointer)
+	// handled in compilation.go or not needed for memory layout
 }

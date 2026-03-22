@@ -36,7 +36,8 @@ function reset_registers(): ()
 end
 
 --- Strings
-local function read_string(startPointer: number): string
+local function read_string(ptr: number): string
+    local startPointer = ((math.floor(ptr % 0x100000000) + 0x100000000) % 0x100000000)
     local endPointer = startPointer
     while endPointer < mem do
         if buffer.readu8(memory, endPointer) == 0 then
@@ -47,22 +48,27 @@ local function read_string(startPointer: number): string
     error("Exceeded buffer size when reading string.")
 end
 function format_string(fmt: number, args: {number}): string
-    local fmtString: string = read_string(fmt)
+    local fmt_ptr = ((math.floor(fmt % 0x100000000) + 0x100000000) % 0x100000000)
+    local fmtString: string = read_string(fmt_ptr)
     local arg_index: number = 1
 
-    return fmtString:gsub("%%([%d%.]*[lL]?[dfseX])", function(spec)
+    return fmtString:gsub("%%([%d%.]*[lL]?[dfseixXpus])", function(spec)
         local fmtSpec = spec:gsub("[lL]", "")
-        if spec:sub(-1) == "d" then
+        local type_char = spec:sub(-1)
+        if type_char == "d" or type_char == "i" then
             local val = args[arg_index]
             arg_index += 1
 
            	local n = --[[u32]] ((math.floor(val % 0x100000000) + 0x100000000) % 0x100000000);
             return string.format("%"..fmtSpec, --[[i32]] (n >= 0x80000000) and (n - 0x100000000) or n)
-        elseif spec:sub(-1) == "X" then
+        elseif type_char == "x" or type_char == "X" or type_char == "p" or type_char == "u" then
             local val = args[arg_index]
             arg_index += 1
+            if type_char == "p" then 
+                fmtSpec = fmtSpec:gsub("p", "x")
+            end
             return string.format("%"..fmtSpec, --[[u32]]((math.floor(val % 0x100000000) + 0x100000000) % 0x100000000))
-        elseif spec:sub(-1) == "f" then
+        elseif type_char == "f" then
             if arg_index % 2 == 1 then
                 arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
             end
@@ -70,11 +76,11 @@ function format_string(fmt: number, args: {number}): string
             local high = args[arg_index]; arg_index += 1
             local float = two_words_to_double(high, low)
             return string.format("%"..fmtSpec, float)
-        elseif spec:sub(-1) == "s" then
+        elseif type_char == "s" then
             local val = args[arg_index]
             arg_index += 1
-            return read_string(val)
-        elseif spec:sub(-1) == "e" then
+            return string.format("%"..fmtSpec, read_string(val))
+        elseif type_char == "e" then
             if arg_index % 2 == 1 then
                 arg_index += 1 -- 64-bit varargs are aligned to even a-registers (skip a1/a3/...)
             end

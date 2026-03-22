@@ -3,6 +3,7 @@ package compiler
 import (
 	_ "embed"
 	"fmt"
+	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -254,15 +255,17 @@ var instructions = map[string]func(*OutputWriter, AssemblyCommand){
 	"bexti": bexti,
 }
 var directives = map[string]func(*OutputWriter, []string){
-	".asciz":  asciz,
-	".string": asciz,
-	".base64": base64data,
-	".quad":   quad,
-	".word":   word,
-	".byte":   byte_,
-	".half":   half,
-	".zero":   zero,
-	".set":    set,
+	".asciz":   asciz,
+	".string":  asciz,
+	".base64":  base64data,
+	".quad":    quad,
+	".word":    word,
+	".byte":    byte_,
+	".half":    half,
+	".zero":    zero,
+	".align":   align,
+	".p2align": align,
+	".set":     set,
 }
 
 /* main */
@@ -286,19 +289,150 @@ func CompileInstruction(writer *OutputWriter, command AssemblyCommand) {
 		label(writer, command)
 	}
 }
-func BeforeCompilation(writer *OutputWriter) {
+func normalizeSection(name string) string {
+	name = strings.Split(name, ",")[0]
+	name = strings.Trim(name, "\"")
+	if strings.HasPrefix(name, ".rodata") {
+		return ".rodata"
+	}
+	if strings.HasPrefix(name, ".sdata") {
+		return ".sdata"
+	}
+	if strings.HasPrefix(name, ".data") {
+		return ".data"
+	}
+	if strings.HasPrefix(name, ".sbss") {
+		return ".sbss"
+	}
+	if strings.HasPrefix(name, ".bss") {
+		return ".bss"
+	}
+	if strings.HasPrefix(name, ".text") {
+		return ".text"
+	}
+	return ".rodata"
+}
 
-	/* load directives */
+func BeforeCompilation(writer *OutputWriter) {
+	/* Pass 1: Collect all labels into MemoryMap */
+	tempMaxPC := 1
+	var pendingLabels []string
+
+	sectionPointers := map[string]int32{
+		".rodata": 1024,
+		".data":   1024 * 1024,      // 1MB
+		".sdata":  2 * 1024 * 1024,  // 2MB
+		".bss":    3 * 1024 * 1024,  // 3MB
+		".sbss":   4 * 1024 * 1024,  // 4MB
+		".text":   5 * 1024 * 1024,  // 5MB
+	}
+	currentSection := ".text"
+
+	// Provide dummy allocations for common newlib/C externs
+	writer.MemoryMap["_impure_ptr"] = 16
+	writer.MemoryMap["_ctype_"] = 32
+
+	for i := range writer.Commands {
+		if writer.Commands[i].Type == Label {
+			labelName := writer.Commands[i].Name
+			pendingLabels = append(pendingLabels, labelName)
+			writer.MemoryMap[labelName] = tempMaxPC // default to current MaxPC
+		} else if writer.Commands[i].Type == Instruction && writer.Commands[i].Name != "" {
+			for _, l := range pendingLabels {
+				writer.MemoryMap[l] = tempMaxPC
+			}
+			pendingLabels = nil
+			tempMaxPC++
+		} else if writer.Commands[i].Type == Directive {
+			attributeComponents := ReadDirective(writer.Commands[i].Name)
+			attributeName := attributeComponents[0]
+
+			if attributeName == ".section" || attributeName == ".text" || attributeName == ".data" || attributeName == ".bss" || attributeName == ".sdata" || attributeName == ".sbss" {
+				sec := attributeName
+				if attributeName == ".section" && len(attributeComponents) > 1 {
+					sec = attributeComponents[1]
+				}
+				currentSection = normalizeSection(sec)
+				continue
+			}
+
+			tempMemPtr := sectionPointers[currentSection]
+
+			for _, l := range pendingLabels {
+				writer.MemoryMap[l] = int(tempMemPtr)
+			}
+			pendingLabels = nil
+
+			// Some directives increment MemoryDevelopmentPointer
+			if attributeName == ".asciz" || attributeName == ".string" {
+				data, _ := UnescapeDirectiveString(attributeComponents[1])
+				tempMemPtr += int32(len(data) + 1)
+			} else if attributeName == ".word" {
+				tempMemPtr += 4
+			} else if attributeName == ".half" {
+				tempMemPtr += 2
+			} else if attributeName == ".byte" {
+				tempMemPtr += 1
+			} else if attributeName == ".quad" {
+				tempMemPtr += 8
+			} else if attributeName == ".zero" {
+				size, _ := strconv.Atoi(attributeComponents[1])
+				tempMemPtr += int32(size)
+			} else if attributeName == ".align" || attributeName == ".p2align" {
+				pow, _ := strconv.Atoi(attributeComponents[1])
+				alignSize := int32(1 << pow)
+				rem := tempMemPtr % alignSize
+				if rem != 0 {
+					tempMemPtr += alignSize - rem
+				}
+			} else if attributeName == ".set" {
+				symName := attributeComponents[1]
+				if len(attributeComponents) >= 3 {
+					if attributeComponents[2] == "." && len(attributeComponents) >= 5 {
+						offset, _ := strconv.Atoi(attributeComponents[4])
+						if attributeComponents[3] == "+" {
+							writer.MemoryMap[symName] = int(tempMemPtr) + offset
+						} else if attributeComponents[3] == "-" {
+							writer.MemoryMap[symName] = int(tempMemPtr) - offset
+						}
+					} else {
+						val, err := strconv.Atoi(attributeComponents[2])
+						if err == nil {
+							writer.MemoryMap[symName] = val
+						} else {
+							if existingAddr, ok := writer.MemoryMap[attributeComponents[2]]; ok {
+								writer.MemoryMap[symName] = existingAddr
+							}
+						}
+					}
+				}
+			}
+			
+			sectionPointers[currentSection] = tempMemPtr
+		}
+	}
+
+	/* Pass 2: Actually process directives and write init() function */
 	WriteIndentedString(writer, "function init(): ()\n")
 	writer.Depth++
 	WriteIndentedString(writer, "reset_registers()\n")
 
-	/* pre-read the code, and write directive to top */
+	sectionPointers = map[string]int32{
+		".rodata": 1024,
+		".data":   1024 * 1024,
+		".sdata":  2 * 1024 * 1024,
+		".bss":    3 * 1024 * 1024,
+		".sbss":   4 * 1024 * 1024,
+		".text":   5 * 1024 * 1024,
+	}
+	currentSection = ".text"
+	writer.MemoryDevelopmentPointer = sectionPointers[currentSection]
+
 	for i := range writer.Commands {
 		if writer.Commands[i].Type == Label {
 			writer.CurrentLabel = &writer.Commands[i]
 			writer.Commands[i].Ignore = true
-			writer.PendingData = PendingData{} // reset so first directive under this label always saves pointer
+			writer.PendingData = PendingData{}
 		}
 		if writer.Commands[i].Type == Instruction && writer.Commands[i].Name != "" {
 			if writer.CurrentLabel != nil {
@@ -308,6 +442,18 @@ func BeforeCompilation(writer *OutputWriter) {
 		if writer.Commands[i].Type == Directive {
 			attributeComponents := ReadDirective(writer.Commands[i].Name)
 			attributeName := attributeComponents[0]
+
+			if attributeName == ".section" || attributeName == ".text" || attributeName == ".data" || attributeName == ".bss" || attributeName == ".sdata" || attributeName == ".sbss" {
+				sectionPointers[currentSection] = writer.MemoryDevelopmentPointer
+				sec := attributeName
+				if attributeName == ".section" && len(attributeComponents) > 1 {
+					sec = attributeComponents[1]
+				}
+				currentSection = normalizeSection(sec)
+				writer.MemoryDevelopmentPointer = sectionPointers[currentSection]
+				continue
+			}
+
 			if _, ok := directives[attributeName]; ok {
 				directives[attributeName](writer, attributeComponents)
 			} else if writer.Options.Comments {
@@ -315,16 +461,23 @@ func BeforeCompilation(writer *OutputWriter) {
 			}
 		}
 	}
+	sectionPointers[currentSection] = writer.MemoryDevelopmentPointer
+
+	/* reset MaxPC for second pass */
+	writer.MaxPC = 1
 
 	/* finish loading directives */
 	WriteIndentedString(writer, "PC = %d\n", FindLabelAddress(writer, writer.Options.MainSymbol))
-	WriteIndentedString(writer, "r3 = (buffer.len(memory) + %d) / 2 -- start at the center after static data\n", writer.MemoryDevelopmentPointer)
+	WriteIndentedString(writer, "r3 = %d -- start at the center after static data\n", 8 * 1024 * 1024)
 	WriteIndentedString(writer, "if r3 >= buffer.len(memory) then error(\"Not enough memory\") end\n")
 	writer.Depth--
 	WriteIndentedString(writer, "end\n")
 
-	/* start code */
+	log.Infof("Section ends: rodata=%d, data=%d, sdata=%d, bss=%d, sbss=%d, text=%d",
+		sectionPointers[".rodata"], sectionPointers[".data"], sectionPointers[".sdata"],
+		sectionPointers[".bss"], sectionPointers[".sbss"], sectionPointers[".text"])
 }
+
 func AfterCompilation(writer *OutputWriter) []byte {
 	AddEnd(writer) // end the current label, if active
 

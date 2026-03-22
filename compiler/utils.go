@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 var symbolWithOffset = regexp.MustCompile(`^([.$A-Za-z_][.$A-Za-z0-9_]*)([+-]\d+)$`)
@@ -176,6 +178,9 @@ func CompileRegister(w *OutputWriter, argument Argument) string {
 		if argument.Offset != 0 {
 			compiled = fmt.Sprintf("%s+%d", compiled, argument.Offset)
 		}
+	} else {
+		logrus.Errorf("Could not resolve as symbol or register: %s\n", argument.Source)
+		compiled = "0"
 	}
 
 	/** Modifier (source was not in MemoryMap — leave as symbol name) */
@@ -203,7 +208,7 @@ func resolveModifierLiteral(modifier string, address int) (int, bool) {
 	case "hi":
 		return int((value + 0x800) >> 12), true
 	case "lo":
-		raw := int32((value + 0x800) & 0xFFF)
+		raw := int32(value & 0xFFF)
 		if raw >= 0x800 {
 			raw -= 0x1000
 		}

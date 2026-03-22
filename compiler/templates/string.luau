@@ -119,6 +119,22 @@ functions["strcmp"] = function()
     push_args(compare_bytes(a, b, math.max(c_strlen(a), c_strlen(b)) + 1, false))
 end
 
+functions["strdup"] = function()
+    local str_ptr = get_args()
+    local str = read_string(str_ptr)
+    local len = #str
+    local new_ptr = malloc(len + 1)
+    if new_ptr == 0 then
+        push_args(0)
+        return
+    end
+    for i = 1, len do
+        buffer.writeu8(memory, new_ptr + i - 1, string.byte(str, i))
+    end
+    buffer.writeu8(memory, new_ptr + len, 0)
+    push_args(new_ptr)
+end
+
 functions["strncmp"] = function()
     local a, b, count = get_args()
     push_args(compare_bytes(a, b, count, false))

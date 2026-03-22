@@ -14,6 +14,9 @@ local function allocate(size: number): number
     if size <= 0 then
         size = 1
     end
+    if mallocDepth + size > buffer.len(memory) then
+        return 0 -- Out of memory
+    end
     mallocDepth += size
     local ptr = buffer.len(memory) - mallocDepth
     return record_allocation(ptr, size)
@@ -202,6 +205,12 @@ functions["setenv"] = function()
     push_args(0)
 end
 
+local errno_ptr = allocate(4)
+
+functions["__errno"] = function()
+    push_args(errno_ptr)
+end
+
 functions["putenv"] = function()
     local pair = read_string(get_args())
     local separator = pair:find("=")
@@ -214,5 +223,11 @@ functions["putenv"] = function()
     local value = pair:sub(separator + 1)
     env[key] = value
     errno = 0
+    push_args(0)
+end
+
+functions["mkdir"] = function()
+    -- local path, mode = get_args()
+    -- Dummy implementation: just return 0 (success)
     push_args(0)
 end
