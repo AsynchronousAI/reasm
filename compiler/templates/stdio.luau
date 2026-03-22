@@ -96,9 +96,13 @@ functions["fseek"] = function()
         new_pos = handle.pos + offset
     elseif whence == 2 then -- SEEK_END
         new_pos = buffer.len(handle.buffer) + offset
+    else
+        push_args(-1)
+        return
     end
 
     if new_pos < 0 then
+        -- POSIX says fseek to negative is undefined/error
         push_args(-1)
         return
     end
