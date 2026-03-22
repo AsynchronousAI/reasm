@@ -383,10 +383,7 @@ func appendStmts(dst []string, src []string) []string {
 	if len(src) == 0 {
 		return dst
 	}
-	result := make([]string, 0, len(dst)+len(src))
-	result = append(result, dst...)
-	result = append(result, src...)
-	return result
+	return append(dst, src...)
 }
 
 func flushExprStmts(w *OutputWriter, stmts []string) {
@@ -592,10 +589,9 @@ func emitStmt(w *OutputWriter, n *IRNode) {
 	}
 }
 func Emit(w *OutputWriter, nodes ...*IRNode) {
-	if len(nodes) == 0 {
-		return
+	if w.Options.LogIR {
+		w.IRNodes = append(w.IRNodes, nodes...)
 	}
-	w.IRNodes = append(w.IRNodes, nodes...)
 	emitIRStatements(w, nodes)
 }
 func dumpIRAsJSON(w *OutputWriter) {

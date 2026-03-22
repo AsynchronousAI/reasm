@@ -10,6 +10,7 @@ import (
 )
 
 var symbolWithOffset = regexp.MustCompile(`^([.$A-Za-z_][.$A-Za-z0-9_]*)([+-]\d+)$`)
+var incrementFunctionNameRe = regexp.MustCompile(`^(.*?)(?:_ext_(\d+))?$`)
 
 func ReadDirective(directive string) []string {
 	result := make([]string, 0, 4)
@@ -117,19 +118,6 @@ func AddEnd(w *OutputWriter) {
 	}
 }
 
-func wrapI32Expr(w *OutputWriter, expr string) string {
-	if !w.Options.Accurate {
-		return expr
-	}
-	return fmt.Sprintf("i32(%s)", expr)
-}
-
-func wrapU32Expr(w *OutputWriter, expr string) string {
-	if !w.Options.Accurate {
-		return expr
-	}
-	return fmt.Sprintf("u32(%s)", expr)
-}
 func CompileRegister(w *OutputWriter, argument Argument) string {
 	/* does it work as a integer (its a plain) */
 	_, err := strconv.ParseInt(argument.Source, 0, 64)
@@ -279,6 +267,7 @@ func JumpTo(w *OutputWriter, label string, link bool) {
 		WriteIndentedString(w, "error(\"No bindings for functions '%s'\")\n", label)
 	}
 }
+
 func CutAndLink(w *OutputWriter) {
 	AddEnd(w)
 	WriteIndentedString(w, "FUNCS[%d] = function(): boolean -- %s (extended) \n", w.MaxPC, w.CurrentLabel.Name)
@@ -286,6 +275,7 @@ func CutAndLink(w *OutputWriter) {
 	w.MaxPC++
 	w.CurrentLabel.Name = IncrementFunctionName(w.CurrentLabel.Name)
 }
+
 func FindInArray(array []string, target string) int {
 	for i, item := range array {
 		if item == target {
@@ -298,9 +288,9 @@ func FindInArray(array []string, target string) int {
 func isCutoffInstruction(instruction AssemblyCommand) bool {
 	return instruction.Type == Instruction && (instruction.Name == "call" || instruction.Name == "tail" || instruction.Name == "jal" || instruction.Name == "jalr")
 }
+
 func IncrementFunctionName(name string) string {
-	re := regexp.MustCompile(`^(.*?)(?:_ext_(\d+))?$`)
-	matches := re.FindStringSubmatch(name)
+	matches := incrementFunctionNameRe.FindStringSubmatch(name)
 
 	if len(matches) == 0 {
 		return name + "_ext_1"
@@ -320,63 +310,57 @@ func IncrementFunctionName(name string) string {
 
 	return fmt.Sprintf("%s_ext_%d", base, num+1)
 }
+
 func GetAllLabels(writer *OutputWriter) []string {
-	labels := make([]string, 0)
+	labels := make([]string, 0, len(writer.LabelPC))
 	for _, command := range writer.Commands {
-		if command.Type == Label && command.Ignore == false {
+		if command.Type == Label && !command.Ignore {
 			labels = append(labels, command.Name)
 		}
 	}
 	return labels
 }
 
-func FindLabelAddress(writer *OutputWriter, target string) int {
-	countedLabels := 0
-	for _, label := range writer.Commands {
-		if (label.Type == Label && label.Ignore == false) || isCutoffInstruction(label) {
-			countedLabels++ // our labels are Lua indexed starting at 1
+func BuildLabelCache(writer *OutputWriter) {
+	writer.LabelPC = make(map[string]int, len(writer.Commands)/4+8)
+
+	counted := 0
+	for _, cmd := range writer.Commands {
+		if (cmd.Type == Label && !cmd.Ignore) || isCutoffInstruction(cmd) {
+			counted++
 		}
-		if label.Type == Label && label.Ignore == false && label.Name == target {
-			return countedLabels
+		if cmd.Type == Label && !cmd.Ignore {
+			writer.LabelPC[cmd.Name] = counted
+		}
+	}
+}
+
+func FindLabelAddress(writer *OutputWriter, target string) int {
+	if writer.LabelPC != nil {
+		if addr, ok := writer.LabelPC[target]; ok {
+			return addr
+		}
+		return -1
+	}
+	counted := 0
+	for _, label := range writer.Commands {
+		if (label.Type == Label && !label.Ignore) || isCutoffInstruction(label) {
+			counted++
+		}
+		if label.Type == Label && !label.Ignore && label.Name == target {
+			return counted
 		}
 	}
 	return -1
 }
 
-func IsLabelEmpty(writer *OutputWriter, label string) bool {
-	reachedLabel := false
-	for _, command := range writer.Commands {
-		if command.Type == Instruction && reachedLabel { /* found something in our bounds */
-			return true
-		}
-
-		if command.Type == Label {
-			if command.Name == label { /* it is our turn! */
-				reachedLabel = true
-			} else if reachedLabel { /* we passed another label, our time is up */
-				return false
-			}
-		}
-	}
-
-	return false
-}
-
 // ---------------------------------------------------------------------------
 // IR integration helpers
 // ---------------------------------------------------------------------------
-
-// irArgExpr converts an Argument to an *IRNode expression, applying the same
-// logic as CompileRegister but returning structured IR instead of a string.
 func irArgExpr(w *OutputWriter, arg Argument) *IRNode {
 	compiled := CompileRegister(w, arg)
-	// CompileRegister already handles all the symbol/register/offset/modifier
-	// resolution and returns a Luau expression string.  We lift it into a
-	// raw literal IR node so the emitter outputs it verbatim.
 	return &IRNode{Kind: IRExprLit, Op: compiled}
 }
-
-// JumpToIR emits a conditional branch (if cond then PC=addr; return true end).
 func JumpToIR(w *OutputWriter, cond *IRNode, label string) {
 	address := FindLabelAddress(w, label)
 	if address == -1 {

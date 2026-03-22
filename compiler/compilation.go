@@ -431,10 +431,11 @@ func BeforeCompilation(writer *OutputWriter) {
 			} else if attributeName == ".local" {
 				// Mark as local if needed, but for now we just skip to next component
 			}
-			
+
 			sectionPointers[currentSection] = tempMemPtr
 		}
 	}
+	BuildLabelCache(writer)
 
 	/* Pass 2: Actually process directives and write init() function */
 	WriteIndentedString(writer, "function init(): ()\n")
@@ -486,6 +487,7 @@ func BeforeCompilation(writer *OutputWriter) {
 		}
 	}
 	sectionPointers[currentSection] = writer.MemoryDevelopmentPointer
+	BuildLabelCache(writer)
 
 	/* reset MaxPC for second pass */
 	writer.MaxPC = 1
