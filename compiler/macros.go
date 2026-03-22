@@ -67,6 +67,23 @@ func base64data(w *OutputWriter, components []string) {
 	w.PendingData.Type = PendingDataTypeString
 }
 
+func local(w *OutputWriter, components []string) {
+	// .local symbol
+	// This is a marker for the assembler, we can ignore it for now as we treat all labels as potentially local/global.
+}
+
+func comm(w *OutputWriter, components []string) {
+	// .comm symbol, length, align
+	if len(components) < 3 {
+		return
+	}
+	// symbol := components[1]
+	// length, _ := strconv.Atoi(components[2])
+	// align is components[3] if present
+
+	// Handled in compilation.go
+}
+
 func quad(w *OutputWriter, components []string) {
 	if w.PendingData.Type != PendingDataTypeNumeric {
 		w.PendingData.Data = strconv.Itoa(int(w.MemoryDevelopmentPointer))

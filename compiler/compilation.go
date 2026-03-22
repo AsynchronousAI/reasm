@@ -266,6 +266,8 @@ var directives = map[string]func(*OutputWriter, []string){
 	".align":   align,
 	".p2align": align,
 	".set":     set,
+	".local":   local,
+	".comm":    comm,
 }
 
 /* main */
@@ -407,6 +409,27 @@ func BeforeCompilation(writer *OutputWriter) {
 						}
 					}
 				}
+			} else if attributeName == ".comm" || attributeName == ".lcomm" {
+				if len(attributeComponents) >= 3 {
+					symName := attributeComponents[1]
+					size, _ := strconv.Atoi(attributeComponents[2])
+					alignSize := int32(1)
+					if len(attributeComponents) >= 4 {
+						pow, _ := strconv.Atoi(attributeComponents[3])
+						alignSize = int32(1 << pow)
+					}
+
+					// Always allocate .comm in .bss
+					bssPtr := sectionPointers[".bss"]
+					rem := bssPtr % alignSize
+					if rem != 0 {
+						bssPtr += alignSize - rem
+					}
+					writer.MemoryMap[symName] = int(bssPtr)
+					sectionPointers[".bss"] = bssPtr + int32(size)
+				}
+			} else if attributeName == ".local" {
+				// Mark as local if needed, but for now we just skip to next component
 			}
 			
 			sectionPointers[currentSection] = tempMemPtr
