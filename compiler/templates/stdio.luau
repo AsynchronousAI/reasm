@@ -32,30 +32,170 @@ end
 
 functions["fopen"] = function()
     local path_ptr, mode_ptr = get_args()
-    -- local path = read_string(path_ptr)
+    local path = read_string(path_ptr)
     -- local mode = read_string(mode_ptr)
-    -- Just return 0 (NULL) for all file open requests for now
-    push_args(0)
+    
+    local file_buffer = files[path]
+    if not file_buffer then
+        push_args(0) -- Return NULL if file not found
+        return
+    end
+
+    local fd = next_fd
+    next_fd += 1
+    open_files[fd] = {
+        buffer = file_buffer,
+        pos = 0,
+        name = path
+    }
+    push_args(fd)
 end
 
 functions["fclose"] = function()
-    push_args(0)
+    local stream = get_args()
+    if open_files[stream] then
+        open_files[stream] = nil
+        push_args(0)
+    else
+        push_args(-1) -- EOF/Error
+    end
 end
 
 functions["fread"] = function()
-    push_args(0)
+    local ptr, size, nmemb, stream = get_args()
+    local handle = open_files[stream]
+    if not handle or size == 0 or nmemb == 0 then
+        push_args(0)
+        return
+    end
+
+    local total_bytes = size * nmemb
+    local available = buffer.len(handle.buffer) - handle.pos
+    local to_read = math.min(total_bytes, available)
+
+    if to_read > 0 then
+        buffer.copy(memory, ptr, handle.buffer, handle.pos, to_read)
+        handle.pos += to_read
+    end
+
+    push_args(math.floor(to_read / size))
 end
 
 functions["fseek"] = function()
-    push_args(-1)
+    local stream, offset, whence = get_args()
+    local handle = open_files[stream]
+    if not handle then
+        push_args(-1)
+        return
+    end
+
+    local new_pos = handle.pos
+    if whence == 0 then -- SEEK_SET
+        new_pos = offset
+    elseif whence == 1 then -- SEEK_CUR
+        new_pos = handle.pos + offset
+    elseif whence == 2 then -- SEEK_END
+        new_pos = buffer.len(handle.buffer) + offset
+    end
+
+    if new_pos < 0 then
+        push_args(-1)
+        return
+    end
+    
+    handle.pos = new_pos
+    push_args(0)
 end
 
 functions["ftell"] = function()
-    push_args(-1)
+    local stream = get_args()
+    local handle = open_files[stream]
+    if not handle then
+        push_args(-1)
+        return
+    end
+    push_args(handle.pos)
 end
 
 functions["feof"] = function()
-    push_args(1)
+    local stream = get_args()
+    local handle = open_files[stream]
+    if not handle then
+        push_args(1)
+        return
+    end
+    push_args(handle.pos >= buffer.len(handle.buffer) and 1 or 0)
+end
+
+functions["fgetc"] = function()
+    local stream = get_args()
+    local handle = open_files[stream]
+    if not handle or handle.pos >= buffer.len(handle.buffer) then
+        push_args(-1) -- EOF
+        return
+    end
+    local c = buffer.readu8(handle.buffer, handle.pos)
+    handle.pos += 1
+    push_args(c)
+end
+
+functions["fgets"] = function()
+    local s_ptr, size, stream = get_args()
+    local handle = open_files[stream]
+    if not handle or size <= 0 or handle.pos >= buffer.len(handle.buffer) then
+        push_args(0) -- NULL
+        return
+    end
+
+    local count = 0
+    while count < size - 1 and handle.pos < buffer.len(handle.buffer) do
+        local c = buffer.readu8(handle.buffer, handle.pos)
+        buffer.writeu8(memory, s_ptr + count, c)
+        handle.pos += 1
+        count += 1
+        if c == 10 then -- \n
+            break
+        end
+    end
+    buffer.writeu8(memory, s_ptr + count, 0)
+    push_args(s_ptr)
+end
+
+functions["fputc"] = function()
+    local c, stream = get_args()
+    local handle = open_files[stream]
+    if not handle then
+        push_args(-1)
+        return
+    end
+    -- If we exceed buffer, we can't write more for now as buffers are fixed size
+    if handle.pos < buffer.len(handle.buffer) then
+        buffer.writeu8(handle.buffer, handle.pos, c)
+        handle.pos += 1
+        push_args(c)
+    else
+        push_args(-1)
+    end
+end
+
+functions["fwrite"] = function()
+    local ptr, size, nmemb, stream = get_args()
+    local handle = open_files[stream]
+    if not handle or size == 0 or nmemb == 0 then
+        push_args(0)
+        return
+    end
+
+    local total_bytes = size * nmemb
+    local available = buffer.len(handle.buffer) - handle.pos
+    local to_write = math.min(total_bytes, available)
+
+    if to_write > 0 then
+        buffer.copy(handle.buffer, handle.pos, memory, ptr, to_write)
+        handle.pos += to_write
+    end
+
+    push_args(math.floor(to_write / size))
 end
 
 functions["printf"] = function()

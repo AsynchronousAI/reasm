@@ -132,7 +132,7 @@ func wrapU32Expr(w *OutputWriter, expr string) string {
 }
 func CompileRegister(w *OutputWriter, argument Argument) string {
 	/* does it work as a integer (its a plain) */
-	_, err := strconv.Atoi(argument.Source)
+	_, err := strconv.ParseInt(argument.Source, 0, 64)
 	if err == nil {
 		return argument.Source
 	}

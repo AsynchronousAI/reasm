@@ -318,13 +318,14 @@ func BeforeCompilation(writer *OutputWriter) {
 	tempMaxPC := 1
 	var pendingLabels []string
 
+	memSize := int32(writer.Options.Memory)
 	sectionPointers := map[string]int32{
 		".rodata": 1024,
-		".data":   1024 * 1024,      // 1MB
-		".sdata":  2 * 1024 * 1024,  // 2MB
-		".bss":    3 * 1024 * 1024,  // 3MB
-		".sbss":   4 * 1024 * 1024,  // 4MB
-		".text":   5 * 1024 * 1024,  // 5MB
+		".data":   memSize / 8,
+		".sdata":  2 * memSize / 8,
+		".bss":    3 * memSize / 8,
+		".sbss":   4 * memSize / 8,
+		".text":   5 * memSize / 8,
 	}
 	currentSection := ".text"
 
@@ -419,11 +420,11 @@ func BeforeCompilation(writer *OutputWriter) {
 
 	sectionPointers = map[string]int32{
 		".rodata": 1024,
-		".data":   1024 * 1024,
-		".sdata":  2 * 1024 * 1024,
-		".bss":    3 * 1024 * 1024,
-		".sbss":   4 * 1024 * 1024,
-		".text":   5 * 1024 * 1024,
+		".data":   memSize / 8,
+		".sdata":  2 * memSize / 8,
+		".bss":    3 * memSize / 8,
+		".sbss":   4 * memSize / 8,
+		".text":   5 * memSize / 8,
 	}
 	currentSection = ".text"
 	writer.MemoryDevelopmentPointer = sectionPointers[currentSection]
@@ -468,8 +469,8 @@ func BeforeCompilation(writer *OutputWriter) {
 
 	/* finish loading directives */
 	WriteIndentedString(writer, "PC = %d\n", FindLabelAddress(writer, writer.Options.MainSymbol))
-	WriteIndentedString(writer, "r3 = %d -- start at the center after static data\n", 8 * 1024 * 1024)
-	WriteIndentedString(writer, "if r3 >= buffer.len(memory) then error(\"Not enough memory\") end\n")
+	WriteIndentedString(writer, "r3 = buffer.len(memory) - 1024 -- start at the end of memory minus some padding\n")
+	WriteIndentedString(writer, "if r3 <= 0 then error(\"Not enough memory\") end\n")
 	writer.Depth--
 	WriteIndentedString(writer, "end\n")
 
@@ -511,6 +512,7 @@ func AfterCompilation(writer *OutputWriter) []byte {
 	init = init,
 	memory = memory,
 	functions = functions,
+	files = files,
 	util = {
 		get_args = get_args,
 		push_args = push_args,

@@ -18,6 +18,9 @@ local mallocDepth: number = 0
 local stdout_cache: string = ""
 local errno: number = 0
 local fflags: number = 0 -- floating-point exception flags (NV,DZ,OF,UF,NX)
+local files: {[string]: buffer} = {}
+local open_files: {[number]: {buffer: buffer, pos: number, name: string}} = {}
+local next_fd: number = 1
 
 -- Utility
 --- Base (can be found in generated code)
@@ -31,7 +34,7 @@ function reset_registers(): ()
     r17,r18,r19,r20,r21,r22,r23,r24,r25,r26,r27,r28,r29,r30,r31,r32 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r33,r34,r35,r36,r37,r38,r39,r40,r41,r42,r43,r44,r45,r46,r47,r48 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
     r49,r50,r51,r52,r53,r54,r55,r56,r57,r58,r59,r60,r61,r62,r63,r64 = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-    r3 = mem -- x2/sp starts at top of stack
+    r3 = mem - 1024 -- x2/sp starts at top of stack minus padding
     fflags = 0
 end
 
