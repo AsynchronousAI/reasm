@@ -9,19 +9,38 @@ func jal(w *OutputWriter, command AssemblyCommand) {
 	CutAndLink(w)
 }
 func jalr(w *OutputWriter, command AssemblyCommand) {
-	returnReg := irArgExpr(w, command.Arguments[0])
+	var returnReg *IRNode
+	var sourceExpr *IRNode
+	var offsetExpr *IRNode
 
-	sourceExpr := returnReg
-	if len(command.Arguments) > 1 {
+	if len(command.Arguments) == 1 {
+		// jalr rs1  =>  jalr x1, rs1, 0
+		returnReg = IRSymbol(SYM_R2) // x1 / ra
+		sourceExpr = irArgExpr(w, command.Arguments[0])
+		offsetExpr = IRLit(0)
+	} else if len(command.Arguments) == 2 {
+		// jalr rs1, offset  =>  jalr x1, rs1, offset
+		// OR jalr rd, rs1   =>  jalr rd, rs1, 0
+		// GCC usually uses jalr rd,rs1,offset or jalr rs1
+		// We'll try to detect if second arg is a register
+		if command.Arguments[1].Register {
+			returnReg = irArgExpr(w, command.Arguments[0])
+			sourceExpr = irArgExpr(w, command.Arguments[1])
+			offsetExpr = IRLit(0)
+		} else {
+			returnReg = IRSymbol(SYM_R2)
+			sourceExpr = irArgExpr(w, command.Arguments[0])
+			offsetExpr = irArgExpr(w, command.Arguments[1])
+		}
+	} else if len(command.Arguments) >= 3 {
+		// jalr rd, rs1, offset
+		returnReg = irArgExpr(w, command.Arguments[0])
 		sourceExpr = irArgExpr(w, command.Arguments[1])
-	}
-	offsetExpr := IRLit(0)
-	if len(command.Arguments) > 2 {
 		offsetExpr = irArgExpr(w, command.Arguments[2])
 	}
 
 	body := []*IRNode{
-		IRStmtAssign(returnReg, IRSymbol(SYM_PC)),
+		IRStmtAssign(returnReg, IRLit(w.MaxPC)),
 		IRStmtSetPC(IRBinop("+", sourceExpr, offsetExpr)),
 	}
 	if w.Options.Trace {
