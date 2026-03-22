@@ -31,9 +31,6 @@ func lui(w *OutputWriter, command AssemblyCommand) {
 	if command.Arguments[1].Modifier == "hi" {
 		if addr, ok := resolveSymbolAddress(w, command.Arguments[1].Source); ok {
 			hi := (addr + 0x800) >> 12                // upper 20 bits rounded
-			if command.Arguments[1].Source == ".LC77" {
-				logrus.Infof("DEBUG: .LC77 addr=%d hi=%d", addr, hi)
-			}
 			Emit(w, IRStmtAssign(dst, IRLit(hi<<12))) // shift into LUI position
 			return
 		} else {
