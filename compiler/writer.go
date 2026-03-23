@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -34,7 +33,6 @@ type OutputWriter struct {
 	// FindLabelAddress previously computed via a linear scan.
 	LabelPC map[string]int
 	Options Options /* user specified options */
-	InlineCounter            int
 	InstructionTotal         int
 	InstructionProcessed     int
 }
@@ -68,13 +66,6 @@ func newOutputWriter(options Options) *OutputWriter {
 		Options:                  options,
 		MemoryMap:                make(map[string]int),
 	}
-}
-
-// nextInlineTemp returns a unique local-variable name without using fmt.Sprintf.
-func (w *OutputWriter) nextInlineTemp() string {
-	name := "__inline" + strconv.Itoa(w.InlineCounter)
-	w.InlineCounter++
-	return name
 }
 
 // WriteString appends a formatted string to the buffer (no indentation).

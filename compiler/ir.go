@@ -150,101 +150,48 @@ type exprResult struct {
 
 type inlineHelper struct {
 	arity  int
-	expand func(*OutputWriter, string, []string) []string
+	expand func(*OutputWriter, []string) (string, []string)
 }
 
 var inlineHelpers = map[string]inlineHelper{
-	RT_U32: {1, func(_ *OutputWriter, target string, args []string) []string {
-		return []string{
-			fmt.Sprintf("local %s = ((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", target, args[0]),
-		}
+	RT_U32: {1, func(_ *OutputWriter, args []string) (string, []string) {
+		return fmt.Sprintf("((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", args[0]), nil
 	}},
-	RT_I32: {1, func(w *OutputWriter, target string, args []string) []string {
-		partial := w.nextInlineTemp()
-		return []string{
-			fmt.Sprintf("local %s = ((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", partial, args[0]),
-			fmt.Sprintf("local %s = (%s >= 0x80000000) and (%s - 0x100000000) or %s", target, partial, partial, partial),
-		}
+	RT_I32: {1, func(w *OutputWriter, args []string) (string, []string) {
+		u32 := fmt.Sprintf("((math.floor(%s %% 0x100000000) + 0x100000000) %% 0x100000000)", args[0])
+		return fmt.Sprintf("(if %s >= 0x80000000 then %s - 0x100000000 else %s)", u32, u32, u32), nil
 	}},
-	RT_F32: {1, func(_ *OutputWriter, target string, args []string) []string {
-		return []string{
+	RT_F32: {1, func(_ *OutputWriter, args []string) (string, []string) {
+		return "buffer.readf32(temp, 0)", []string{
 			fmt.Sprintf("buffer.writef32(temp, 0, %s)", args[0]),
-			fmt.Sprintf("local %s = buffer.readf32(temp, 0)", target),
 		}
 	}},
-	RT_INT_TO_FLOAT: {1, func(_ *OutputWriter, target string, args []string) []string {
-		return []string{
+	RT_INT_TO_FLOAT: {1, func(_ *OutputWriter, args []string) (string, []string) {
+		return "buffer.readf32(temp, 0)", []string{
 			fmt.Sprintf("buffer.writei32(temp, 0, %s)", args[0]),
-			fmt.Sprintf("local %s = buffer.readf32(temp, 0)", target),
 		}
 	}},
-	RT_FLOAT_TO_INT: {1, func(_ *OutputWriter, target string, args []string) []string {
-		return []string{
+	RT_FLOAT_TO_INT: {1, func(_ *OutputWriter, args []string) (string, []string) {
+		return "buffer.readi32(temp, 0)", []string{
 			fmt.Sprintf("buffer.writef32(temp, 0, %s)", args[0]),
-			fmt.Sprintf("local %s = buffer.readi32(temp, 0)", target),
 		}
 	}},
-	RT_IDIV_TRUNC: {2, func(w *OutputWriter, target string, args []string) []string {
-		aVar := w.nextInlineTemp()
-		bVar := w.nextInlineTemp()
-		return []string{
-			fmt.Sprintf("local %s = %s", aVar, args[0]),
-			fmt.Sprintf("local %s = %s", bVar, args[1]),
-			fmt.Sprintf("local %s", target),
-			fmt.Sprintf("if %s == 0 then", bVar),
-			fmt.Sprintf("\t%s = -1", target),
-			fmt.Sprintf("elseif %s == -1 and %s == -2147483648 then", bVar, aVar),
-			fmt.Sprintf("\t%s = -2147483648", target),
-			fmt.Sprintf("elseif %s >= 0 then", aVar),
-			fmt.Sprintf("\t%s = (%s - (%s %% %s)) // %s", target, aVar, aVar, bVar, bVar),
-			"else",
-			fmt.Sprintf("\t%s = -((-%s) - ((-%s) %% %s)) // %s", target, aVar, aVar, bVar, bVar),
-			"end",
-		}
+	RT_IDIV_TRUNC: {2, func(w *OutputWriter, args []string) (string, []string) {
+		a, b := args[0], args[1]
+		return fmt.Sprintf("(if %s == 0 then -1 else if %s == -1 and %s == -2147483648 then -2147483648 else if %s >= 0 then (%s - (%s %% %s)) // %s else -((-%s) - ((-%s) %% %s)) // %s)",
+			b, b, a, a, a, a, b, b, a, a, b, b), nil
 	}},
-	RT_FCLASS: {1, func(w *OutputWriter, target string, args []string) []string {
-		xVar := w.nextInlineTemp()
-		return []string{
-			fmt.Sprintf("local %s = %s", xVar, args[0]),
-			fmt.Sprintf("local %s = 0", target),
-			fmt.Sprintf("if %s ~= %s then", xVar, xVar),
-			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 9)) -- qNaN (cannot distinguish sNaN in Luau)", target, target),
-			fmt.Sprintf("elseif %s == math.huge then", xVar),
-			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 7)) -- +Inf", target, target),
-			fmt.Sprintf("elseif %s == -math.huge then", xVar),
-			fmt.Sprintf("\t%s = bit32.bor(%s, bit32.lshift(1, 0)) -- -Inf", target, target),
-			fmt.Sprintf("elseif %s == 0 then", xVar),
-			fmt.Sprintf("\tif 1/%s == -math.huge then", xVar),
-			fmt.Sprintf("\t\t%s = bit32.bor(%s, bit32.lshift(1, 3)) -- -Zero", target, target),
-			"\telse",
-			fmt.Sprintf("\t\t%s = bit32.bor(%s, bit32.lshift(1, 4)) -- +Zero", target, target),
-			"\tend",
-			"else",
-			fmt.Sprintf("\tlocal absx = math.abs(%s)", xVar),
-			"\tlocal min_normal = 2.2250738585072014e-308 -- 2^-1022",
-			fmt.Sprintf("\tif absx < min_normal then"),
-			fmt.Sprintf("\t\tif %s > 0 then", xVar),
-			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 5)) -- +Subnormal", target, target),
-			"\t\telse",
-			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 2)) -- -Subnormal", target, target),
-			"\t\tend",
-			fmt.Sprintf("\telse"),
-			fmt.Sprintf("\t\tif %s > 0 then", xVar),
-			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 6)) -- +Normal", target, target),
-			"\t\telse",
-			fmt.Sprintf("\t\t\t%s = bit32.bor(%s, bit32.lshift(1, 1)) -- -Normal", target, target),
-			"\t\tend",
-			fmt.Sprintf("\tend"),
-			"end",
-		}
+	RT_FCLASS: {1, func(w *OutputWriter, args []string) (string, []string) {
+		x := args[0]
+		return fmt.Sprintf("(if %s ~= %s then 0x200 elseif %s == math.huge then 0x80 elseif %s == -math.huge then 0x01 elseif %s == 0 then (if 1/%s == -math.huge then 0x08 else 0x10) else (if math.abs(%s) < 2.2250738585072014e-308 then (if %s > 0 then 0x20 else 0x04) else (if %s > 0 then 0x40 else 0x02)))",
+			x, x, x, x, x, x, x, x, x), nil
 	}},
 }
 
 func expandInlineHelper(w *OutputWriter, op string, args []string) (exprResult, bool) {
 	if helper, ok := inlineHelpers[op]; ok && len(args) == helper.arity {
-		name := w.nextInlineTemp()
-		stmts := helper.expand(w, name, args)
-		return exprResult{expr: name, stmts: stmts}, true
+		expr, stmts := helper.expand(w, args)
+		return exprResult{expr: expr, stmts: stmts}, true
 	}
 	return exprResult{}, false
 }
