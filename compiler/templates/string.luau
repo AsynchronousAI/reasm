@@ -1,11 +1,18 @@
 --- <string.h> helpers
 
 local function read_byte(ptr, offset)
-    return buffer.readu8(memory, ptr + offset)
+    local addr = bit32.band(ptr + offset, 0xFFFFFFFF)
+    if addr >= buffer.len(memory) then
+        return 0
+    end
+    return buffer.readu8(memory, addr)
 end
 
 local function write_byte(ptr, offset, value)
-    buffer.writeu8(memory, ptr + offset, bit32.band(value, 0xFF))
+    local addr = bit32.band(ptr + offset, 0xFFFFFFFF)
+    if addr < buffer.len(memory) then
+        buffer.writeu8(memory, addr, bit32.band(value, 0xFF))
+    end
 end
 
 local function c_strlen(ptr)
@@ -100,8 +107,12 @@ local function compare_bytes(a, b, limit, case_insensitive)
         local byteA = read_byte(a, i)
         local byteB = read_byte(b, i)
         if case_insensitive then
-            byteA = string.byte(string.lower(string.char(byteA)))
-            byteB = string.byte(string.lower(string.char(byteB)))
+            if byteA >= 65 and byteA <= 90 then -- A-Z
+                byteA += 32
+            end
+            if byteB >= 65 and byteB <= 90 then -- A-Z
+                byteB += 32
+            end
         end
         if byteA ~= byteB then
             return byteA - byteB
@@ -238,4 +249,9 @@ functions["strtok"] = function()
     end
 
     push_args(start)
+end
+
+functions["strncasecmp"] = function()
+    local a, b, count = get_args()
+    push_args(compare_bytes(a, b, count, true))
 end
