@@ -437,6 +437,31 @@ func BeforeCompilation(writer *OutputWriter) {
 	}
 	BuildLabelCache(writer)
 
+	/* Pre-scan: set Ignore flags on all labels before Pass 2, so that
+	   BuildLabelCache below produces the correct FUNCS indices that .word
+	   directives (jump tables) need to reference. */
+	{
+		var preCurrentLabel *AssemblyCommand
+		for i := range writer.Commands {
+			if writer.Commands[i].Type == Label {
+				preCurrentLabel = &writer.Commands[i]
+				writer.Commands[i].Ignore = true
+			}
+			if writer.Commands[i].Type == Instruction && writer.Commands[i].Name != "" {
+				if preCurrentLabel != nil {
+					preCurrentLabel.Ignore = false
+				}
+			}
+		}
+		BuildLabelCache(writer)
+		// Reset Ignore so Pass 2 can re-derive CurrentLabel state cleanly.
+		for i := range writer.Commands {
+			if writer.Commands[i].Type == Label {
+				writer.Commands[i].Ignore = false
+			}
+		}
+	}
+
 	/* Pass 2: Actually process directives and write init() function */
 	WriteIndentedString(writer, "function init(): ()\n")
 	writer.Depth++

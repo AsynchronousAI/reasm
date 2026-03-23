@@ -92,7 +92,7 @@ func quad(w *OutputWriter, components []string) {
 
 	val, err := strconv.ParseInt(components[1], 0, 64)
 	if err != nil {
-		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+		if addr, ok := resolveSymbolAsPC(w, components[1]); ok {
 			val = int64(addr)
 		} else {
 			log.Errorf("failed to parse or resolve .quad value %q", components[1])
@@ -113,7 +113,7 @@ func word(w *OutputWriter, components []string) {
 
 	val, err := strconv.ParseInt(components[1], 0, 64)
 	if err != nil {
-		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+		if addr, ok := resolveSymbolAsPC(w, components[1]); ok {
 			val = int64(addr)
 		} else {
 			log.Errorf("failed to parse or resolve .word value %q", components[1])
@@ -131,7 +131,7 @@ func half(w *OutputWriter, components []string) {
 
 	val, err := strconv.ParseInt(components[1], 0, 64)
 	if err != nil {
-		if addr, ok := resolveSymbolAddress(w, components[1]); ok {
+		if addr, ok := resolveSymbolAsPC(w, components[1]); ok {
 			val = int64(addr)
 		} else {
 			log.Errorf("failed to parse or resolve .half value %q", components[1])

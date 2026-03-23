@@ -217,6 +217,15 @@ func applyModifierExpression(modifier, expr string) string {
 	}
 }
 
+func resolveSymbolAsPC(w *OutputWriter, symbol string) (int, bool) {
+	if w.LabelPC != nil {
+		if addr, ok := w.LabelPC[symbol]; ok {
+			return addr, true
+		}
+	}
+	return resolveSymbolAddress(w, symbol)
+}
+
 func resolveSymbolAddress(w *OutputWriter, symbol string) (int, bool) {
 	if memoryAddress, ok := w.MemoryMap[symbol]; ok {
 		return memoryAddress, true
