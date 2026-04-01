@@ -1,10 +1,32 @@
 package compiler
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 )
 
+func isSafeAddress(addr *IRNode) bool {
+	if addr == nil {
+		return false
+	}
+	if addr.Kind == IRExprLit {
+		val := 0
+		if _, err := fmt.Sscanf(addr.Op, "%d", &val); err == nil {
+			if val >= 0 && val < 524288000 { // 500MB
+				return true
+			}
+		}
+	}
+	if addr.Kind == IRExprSym {
+		return true
+	}
+	return false
+}
+
 func normalizeAddress(addr *IRNode) *IRNode {
+	if isSafeAddress(addr) {
+		return addr
+	}
 	return IRCall(BIT32_BAND, IRBinop("+", IRCall(MATH_FLOOR, IRBinop("%", addr, IRLit(0x100000000))), IRLit(0x100000000)), IRLit(0xFFFFFFFF))
 }
 

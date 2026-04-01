@@ -139,6 +139,29 @@ local function malloc(size: number): number
 end
 
 
+-- Helper Functions
+local function idiv_trunc(a: number, b: number): number
+    if b == 0 then return -1 
+    elseif b == -1 and a == -2147483648 then return -2147483648
+    elseif a >= 0 then return (a - (a % b)) // b
+    else return -(- a - (- a % b)) // b
+    end
+end
+
+local function fclass(x: number): number
+    if x ~= x then return 0x200
+    elseif x == math.huge then return 0x80
+    elseif x == -math.huge then return 0x01
+    elseif x == 0 then return if 1/x == -math.huge then 0x08 else 0x10
+    else
+        if math.abs(x) < 2.2250738585072014e-308 then
+            return if x > 0 then 0x20 else 0x04
+        else
+            return if x > 0 then 0x40 else 0x02
+        end
+    end
+end
+
 -- Functions
 local functions = {}
 

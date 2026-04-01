@@ -177,14 +177,10 @@ var inlineHelpers = map[string]inlineHelper{
 		}
 	}},
 	RT_IDIV_TRUNC: {2, func(w *OutputWriter, args []string) (string, []string) {
-		a, b := args[0], args[1]
-		return fmt.Sprintf("(if %s == 0 then -1 else if %s == -1 and %s == -2147483648 then -2147483648 else if %s >= 0 then (%s - (%s %% %s)) // %s else -(- %s - (- %s %% %s)) // %s)",
-			b, b, a, a, a, a, b, b, a, a, b, b), nil
+		return fmt.Sprintf("idiv_trunc(%s, %s)", args[0], args[1]), nil
 	}},
 	RT_FCLASS: {1, func(w *OutputWriter, args []string) (string, []string) {
-		x := args[0]
-		return fmt.Sprintf("(if %s ~= %s then 0x200 elseif %s == math.huge then 0x80 elseif %s == -math.huge then 0x01 elseif %s == 0 then (if 1/%s == -math.huge then 0x08 else 0x10) else (if math.abs(%s) < 2.2250738585072014e-308 then (if %s > 0 then 0x20 else 0x04) else (if %s > 0 then 0x40 else 0x02)))",
-			x, x, x, x, x, x, x, x, x), nil
+		return fmt.Sprintf("fclass(%s)", args[0]), nil
 	}},
 }
 
