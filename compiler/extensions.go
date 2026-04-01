@@ -43,7 +43,7 @@ func generateExtensions(writer *OutputWriter) string {
 	included := map[string]bool{}
 
 	for _, name := range writer.Options.Imports {
-		if ext, ok := extensions[name]; ok {
+		if ext, ok := extensions[name]; ok || name == "all" {
 			if included[name] {
 				continue
 			}
@@ -57,7 +57,7 @@ func generateExtensions(writer *OutputWriter) string {
 
 	defaultLibs := []string{"memory", "string", "ctype", "stdlib", "stdio", "time"}
 	for _, name := range defaultLibs {
-		if ext, ok := extensions[name]; ok && included[name] {
+		if ext, ok := extensions[name]; ok && included[name] || included["all"] {
 			sb.WriteString(ext)
 			sb.WriteString("\n")
 			included[name] = true

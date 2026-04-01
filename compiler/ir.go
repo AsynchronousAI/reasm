@@ -178,7 +178,7 @@ var inlineHelpers = map[string]inlineHelper{
 	}},
 	RT_IDIV_TRUNC: {2, func(w *OutputWriter, args []string) (string, []string) {
 		a, b := args[0], args[1]
-		return fmt.Sprintf("(if %s == 0 then -1 else if %s == -1 and %s == -2147483648 then -2147483648 else if %s >= 0 then (%s - (%s %% %s)) // %s else -((-%s) - ((-%s) %% %s)) // %s)",
+		return fmt.Sprintf("(if %s == 0 then -1 else if %s == -1 and %s == -2147483648 then -2147483648 else if %s >= 0 then (%s - (%s %% %s)) // %s else -(- %s - (- %s %% %s)) // %s)",
 			b, b, a, a, a, a, b, b, a, a, b, b), nil
 	}},
 	RT_FCLASS: {1, func(w *OutputWriter, args []string) (string, []string) {
