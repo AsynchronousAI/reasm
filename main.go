@@ -89,7 +89,7 @@ func main() {
 	rootCmd.Flags().BoolVar(&enableComments, "comments", false, "Include debug comments in the output")
 	rootCmd.Flags().BoolVar(&enableTrace, "trace", false, "Prints out a trace of the PC")
 	rootCmd.Flags().BoolVar(&enableAccurate, "accurate", false, "Enable more accurate ISA modeling (float32 rounding, 32-bit overflow wrapping)")
-	rootCmd.Flags().IntVar(&memorySize, "memory", 2048, "Memory size in bytes for generated Luau RAM buffer")
+	rootCmd.Flags().IntVar(&memorySize, "memory", 524288000, "Memory size in bytes for generated Luau RAM buffer (default: 500MB)")
 	rootCmd.Flags().StringVar(&mode, "mode", "main", "Mode to compile as: module, main, or bench")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "The output luau file.")
 	rootCmd.Flags().StringVarP(&mainSymbol, "symbol", "e", "main", "The main symbol to start automatically.")
